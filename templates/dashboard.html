@@ -1,1 +1,1131 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if page == 'home' %}Beranda{% elif page == 'stock' %}Stok PLTD{% elif page == 'analisis' %}Analisis{% elif page == 'propose' %}Propose Order{% else %}Transaksi{% endif %} - Dashboard PLTD</title>
+    
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        :root {
+            --sidebar-width: 260px;
+            --primary-color: #0A2540;
+            --secondary-color: #1F4E79;
+            --accent-color: #FFD966;
+            --bg-light: #f0f2f5;
+            --card-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            --font-family: 'Inter', 'Segoe UI', sans-serif;
+        }
 
+        * { font-family: var(--font-family); }
+        body { background: var(--bg-light); margin: 0; padding: 0; }
+
+        /* SIDEBAR */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: var(--sidebar-width);
+            height: 100%;
+            background: linear-gradient(180deg, #0A2540 0%, #0F3B5C 100%);
+            color: white;
+            padding: 20px 0;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            border-right: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-header h3 {
+            font-weight: 700;
+            font-size: 1.2rem;
+            margin: 0;
+            color: var(--accent-color);
+        }
+        .sidebar-header h3 i { color: var(--accent-color); }
+        .sidebar-header .badge { font-size: 0.65rem; padding: 4px 10px; }
+
+        .sidebar .nav { padding: 20px 0; }
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.7);
+            padding: 12px 24px;
+            border-radius: 8px;
+            margin: 4px 12px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            font-size: 0.9rem;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+        }
+        .sidebar .nav-link:hover {
+            color: white;
+            background: rgba(255, 217, 102, 0.15);
+        }
+        .sidebar .nav-link.active {
+            color: #0A2540;
+            background: var(--accent-color);
+        }
+        .sidebar .nav-link i { margin-right: 12px; font-size: 1.1rem; }
+
+        .sidebar-footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .user-info img {
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            border: 2px solid var(--accent-color);
+        }
+        .user-info div { display: flex; flex-direction: column; }
+        .user-info strong { font-size: 0.9rem; }
+        .user-info small { color: rgba(255,255,255,0.6); font-size: 0.7rem; }
+
+        /* MAIN CONTENT */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh;
+            padding: 0;
+        }
+
+        .top-navbar {
+            background: white;
+            padding: 15px 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 999;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .top-navbar h5 { font-weight: 700; color: #0A2540; margin: 0; }
+        .top-navbar .badge { padding: 6px 14px; font-size: 0.75rem; }
+        .content-wrapper { padding: 25px 30px; }
+
+        /* STAT CARDS */
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0,0,0,0.04);
+            height: 100%;
+        }
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 28px rgba(0,0,0,0.1);
+        }
+        .stat-card h6 {
+            color: #6b7280;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-card h3 {
+            font-weight: 800;
+            color: #0A2540;
+            margin: 4px 0;
+            font-size: 1.8rem;
+        }
+        .stat-card .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            margin-bottom: 12px;
+        }
+        .stat-card.primary .stat-icon { background: linear-gradient(135deg, #0A2540, #1F4E79); }
+        .stat-card.success .stat-icon { background: linear-gradient(135deg, #10B981, #34D399); }
+        .stat-card.warning .stat-icon { background: linear-gradient(135deg, #F59E0B, #FBBF24); }
+        .stat-card.info .stat-icon { background: linear-gradient(135deg, #3B82F6, #60A5FA); }
+
+        /* CHART CARDS */
+        .chart-card {
+            border: none;
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            background: white;
+        }
+        .chart-card .card-header {
+            background: transparent;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .chart-card .card-header h6 {
+            margin: 0;
+            font-weight: 600;
+        }
+        .chart-card .card-body { padding: 20px; }
+
+        /* FILTER CARD */
+        .filter-card {
+            border: none;
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            background: white;
+            position: sticky;
+            top: 80px;
+        }
+        .filter-card .card-header {
+            background: var(--primary-color);
+            color: white;
+            border-radius: 16px 16px 0 0;
+            padding: 15px 20px;
+        }
+        .filter-card .card-header h6 { margin: 0; }
+
+        /* TABLE STYLING */
+        .table {
+            font-size: 0.85rem;
+            margin-bottom: 0;
+        }
+        .table th {
+            background: var(--primary-color);
+            color: white;
+            font-weight: 600;
+            padding: 10px 12px;
+            border: none;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .table td { padding: 8px 12px; vertical-align: middle; }
+        .table-hover tbody tr:hover { background-color: #f3f4f6; }
+        .table-bordered td, .table-bordered th { border: 1px solid #e5e7eb; }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 70px;
+            }
+            .sidebar-header h3,
+            .sidebar-header .badge,
+            .sidebar .nav-link span,
+            .sidebar-footer .user-info div {
+                display: none;
+            }
+            .sidebar .nav-link {
+                padding: 12px;
+                justify-content: center;
+            }
+            .sidebar .nav-link i {
+                margin: 0;
+                font-size: 1.3rem;
+            }
+            .main-content { margin-left: 70px; }
+            .top-navbar { padding: 12px 15px; }
+            .content-wrapper { padding: 15px; }
+            .stat-card { padding: 15px; }
+            .filter-card { position: relative; top: 0; }
+        }
+
+        /* CUSTOM SCROLL */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* HEATMAP STYLES */
+        .heatmap-0 { background-color: #e8f5e9 !important; color: #888 !important; }
+        .heatmap-1 { background-color: #fff9c4 !important; }
+        .heatmap-2 { background-color: #ffe0b2 !important; font-weight: bold; }
+        .heatmap-3 { background-color: #ffab91 !important; font-weight: bold; color: #bf360c !important; }
+        .heatmap-4 { background-color: #ef5350 !important; font-weight: bold; color: white !important; }
+
+        /* CRITICAL HIGHLIGHT */
+        .critical { background-color: #ffcccc !important; color: #cc0000 !important; font-weight: bold !important; }
+
+        /* BADGE STATUS */
+        .badge-status {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .badge-status.completed { background: #d1fae5; color: #065f46; }
+        .badge-status.processing { background: #fef3c7; color: #92400e; }
+        .badge-status.pending { background: #fee2e2; color: #991b1b; }
+        .badge-status.shipping { background: #dbeafe; color: #1e40af; }
+    </style>
+</head>
+<body>
+
+    <!-- ========== SIDEBAR ========== -->
+    <nav class="sidebar">
+        <div class="sidebar-header">
+            <h3><i class="bi bi-grid-1x2-fill"></i> BACH GROUP</h3>
+            <span class="badge bg-light text-dark">PLTD</span>
+        </div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link {% if page == 'home' %}active{% endif %}" href="{{ url_for('home') }}">
+                    <i class="bi bi-house-fill"></i> <span>Beranda</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if page == 'stock' %}active{% endif %}" href="{{ url_for('stock') }}">
+                    <i class="bi bi-box-seam-fill"></i> <span>Stok PLTD</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if page == 'analisis' %}active{% endif %}" href="{{ url_for('analisis') }}">
+                    <i class="bi bi-bar-chart-fill"></i> <span>Analisis</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if page == 'propose' %}active{% endif %}" href="{{ url_for('propose') }}">
+                    <i class="bi bi-cart-plus-fill"></i> <span>Propose Order</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if page == 'transaksi' %}active{% endif %}" href="{{ url_for('transaksi') }}">
+                    <i class="bi bi-truck"></i> <span>Transaksi</span>
+                </a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <img src="https://ui-avatars.com/api/?name=PLTD&background=FFD966&color=0A2540&size=40" alt="logo">
+                <div>
+                    <strong>PLTD Admin</strong>
+                    <small>Logistics Center</small>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ========== MAIN CONTENT ========== -->
+    <div class="main-content">
+        <!-- Top Navbar -->
+        <nav class="top-navbar">
+            <div class="d-flex justify-content-between align-items-center w-100">
+                <div>
+                    <h5 class="mb-0">
+                        {% if page == 'home' %}⚡ Dashboard PLTD Bach Group
+                        {% elif page == 'stock' %}📦 Stok Material PLTD
+                        {% elif page == 'analisis' %}📊 Analisis Pemakaian Material
+                        {% elif page == 'propose' %}📦 Propose Order Material
+                        {% else %}🚚 Transaksi Project{% endif %}
+                    </h5>
+                    <small class="text-muted">Data real-time dari Google Sheets</small>
+                </div>
+                <div>
+                    <span class="badge bg-success"><i class="bi bi-circle-fill"></i> Live</span>
+                </div>
+            </div>
+        </nav>
+
+        <div class="content-wrapper">
+
+            <!-- ============================================================ -->
+            <!-- PAGE: HOME (BERANDA) -->
+            <!-- ============================================================ -->
+            {% if page == 'home' %}
+
+            <!-- Metrics -->
+            <div class="row g-4 mb-4">
+                <div class="col-md-3">
+                    <div class="stat-card primary">
+                        <div class="stat-icon"><i class="bi bi-geo-alt-fill"></i></div>
+                        <h6>PLTD Aktif</h6>
+                        <h3>{{ metrics.pltd_aktif if metrics else 0 }}</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card success">
+                        <div class="stat-icon"><i class="bi bi-box-seam-fill"></i></div>
+                        <h6>Total Stok</h6>
+                        <h3>{{ metrics.total_stok if metrics else '0' }}</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card warning">
+                        <div class="stat-icon"><i class="bi bi-tools"></i></div>
+                        <h6>Preventive Items</h6>
+                        <h3>{{ metrics.preventive if metrics else 0 }}</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card info">
+                        <div class="stat-icon"><i class="bi bi-wrench"></i></div>
+                        <h6>Corrective Items</h6>
+                        <h3>{{ metrics.corrective if metrics else 0 }}</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map -->
+            {% if map_html %}
+            <div class="card chart-card mb-4">
+                <div class="card-header">
+                    <h6><i class="bi bi-map"></i> Lokasi PLTD</h6>
+                </div>
+                <div class="card-body">
+                    {{ map_html|safe }}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Charts -->
+            <div class="row g-4 mb-4">
+                <div class="col-md-6">
+                    <div class="card chart-card">
+                        <div class="card-header">
+                            <h6><i class="bi bi-pie-chart"></i> Komposisi Stok</h6>
+                        </div>
+                        <div class="card-body">
+                            {{ pie_html|safe if pie_html else '<p class="text-muted">Data tidak tersedia</p>' }}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card chart-card">
+                        <div class="card-header">
+                            <h6><i class="bi bi-bar-chart"></i> Top 5 PLTD</h6>
+                        </div>
+                        <div class="card-body">
+                            {{ bar_html|safe if bar_html else '<p class="text-muted">Data tidak tersedia</p>' }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Critical -->
+            {% if kritis_html %}
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h6><i class="bi bi-exclamation-triangle-fill text-danger"></i> Material Kritis (Sisa ≤ 1.5 Bulan)</h6>
+                </div>
+                <div class="card-body">
+                    {{ kritis_html|safe }}
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-success">
+                <i class="bi bi-check-circle-fill"></i> Semua material preventive dalam kondisi stok aman (>1.5 bulan)
+            </div>
+            {% endif %}
+
+            <div class="mt-4 p-3 bg-light rounded-3 text-center">
+                <small class="text-muted">
+                    <i class="bi bi-clock-history"></i> Data diperbarui secara real-time dari Google Sheets | 
+                    ⚡ Dashboard dikelola oleh Tim Logistik Bach
+                </small>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- PAGE: STOCK -->
+            <!-- ============================================================ -->
+            {% elif page == 'stock' %}
+
+            <div class="row">
+                <!-- Filter -->
+                <div class="col-lg-3 mb-4">
+                    <div class="card filter-card">
+                        <div class="card-header">
+                            <h6><i class="bi bi-sliders2"></i> Filter</h6>
+                        </div>
+                        <div class="card-body">
+                            <form method="get" action="{{ url_for('stock') }}" id="filterForm">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">PLTD</label>
+                                    <select class="form-select form-select-sm" name="pltd" multiple size="4">
+                                        {% for pltd in pltd_list %}
+                                        <option value="{{ pltd }}" {% if pltd in selected_pltd %}selected{% endif %}>
+                                            {{ pltd }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <small class="text-muted">Ctrl+Click untuk multi-select</small>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Jenis Material</label>
+                                    <select class="form-select form-select-sm" name="jenis" multiple size="2">
+                                        {% for j in jenis_list %}
+                                        <option value="{{ j }}" {% if j in selected_jenis %}selected{% endif %}>
+                                            {{ j }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Nama Material</label>
+                                    <select class="form-select form-select-sm" name="nama" multiple size="3">
+                                        {% for n in nama_list[:20] %}
+                                        <option value="{{ n }}" {% if n in selected_nama %}selected{% endif %}>
+                                            {{ n[:30] }}{% if n|length > 30 %}...{% endif %}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Kode Material</label>
+                                    <select class="form-select form-select-sm" name="kode" multiple size="3">
+                                        {% for k in kode_list[:20] %}
+                                        <option value="{{ k }}" {% if k in selected_kode %}selected{% endif %}>
+                                            {{ k }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" name="highlight" value="true" 
+                                           id="highlight" {% if highlight %}checked{% endif %}>
+                                    <label class="form-check-label" for="highlight">
+                                        🔴 Highlight kritis (≤1.5 bulan)
+                                    </label>
+                                </div>
+                                
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-funnel"></i> Terapkan Filter
+                                    </button>
+                                    <a href="{{ url_for('stock') }}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="bi bi-arrow-counterclockwise"></i> Reset
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Data -->
+                <div class="col-lg-9">
+                    {% if error %}
+                    <div class="alert alert-warning">{{ error }}</div>
+                    {% else %}
+                    
+                    <!-- Preventive -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0"><i class="bi bi-shield-check"></i> Material Preventive</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if prev_pivot %}
+                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                {{ prev_pivot|safe }}
+                            </div>
+                            {% else %}
+                            <p class="text-muted p-3">Tidak ada data Preventive.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Sisa Bulan -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0"><i class="bi bi-clock"></i> Sisa Stok Preventive (Bulan)</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if sisa_pivot %}
+                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                {{ sisa_pivot|safe }}
+                            </div>
+                            {% else %}
+                            <p class="text-muted p-3">Data Sisa Bulan tidak tersedia.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Corrective -->
+                    <div class="card">
+                        <div class="card-header bg-warning">
+                            <h6 class="mb-0"><i class="bi bi-wrench"></i> Material Corrective</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if corr_pivot %}
+                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                {{ corr_pivot|safe }}
+                            </div>
+                            {% else %}
+                            <p class="text-muted p-3">Tidak ada data Corrective.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- PAGE: ANALISIS -->
+            <!-- ============================================================ -->
+            {% elif page == 'analisis' %}
+
+            <div class="row">
+                <!-- Filter -->
+                <div class="col-lg-3 mb-4">
+                    <div class="card filter-card">
+                        <div class="card-header">
+                            <h6><i class="bi bi-sliders2"></i> Filter</h6>
+                        </div>
+                        <div class="card-body">
+                            <form method="get" action="{{ url_for('analisis') }}">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Nama Material</label>
+                                    <select class="form-select form-select-sm" name="nama" multiple size="3">
+                                        {% for n in nama_list[:20] %}
+                                        <option value="{{ n }}" {% if n in selected_nama %}selected{% endif %}>
+                                            {{ n[:30] }}{% if n|length > 30 %}...{% endif %}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                {% if gudang_list %}
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Gudang</label>
+                                    <select class="form-select form-select-sm" name="gudang" multiple size="3">
+                                        {% for g in gudang_list %}
+                                        <option value="{{ g }}" {% if g in selected_gudang %}selected{% endif %}>
+                                            {{ g }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Tahun</label>
+                                    <select class="form-select form-select-sm" name="tahun" multiple size="3">
+                                        {% for t in tahun_list %}
+                                        <option value="{{ t }}" {% if t in selected_tahun %}selected{% endif %}>
+                                            {{ t }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Bulan</label>
+                                    <select class="form-select form-select-sm" name="periode" multiple size="4">
+                                        {% for p in periode_list %}
+                                        <option value="{{ p }}" {% if p in selected_periode %}selected{% endif %}>
+                                            {{ p }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-funnel"></i> Terapkan Filter
+                                    </button>
+                                    <a href="{{ url_for('analisis') }}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="bi bi-arrow-counterclockwise"></i> Reset
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Data -->
+                <div class="col-lg-9">
+                    {% if error %}
+                    <div class="alert alert-warning">{{ error }}</div>
+                    {% else %}
+                    
+                    <!-- KPI -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-6 col-md-3">
+                            <div class="stat-card">
+                                <h6>Total Transaksi</h6>
+                                <h3>{{ kpi.total_trans if kpi else 0 }}</h3>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="stat-card">
+                                <h6>Total Keluar</h6>
+                                <h3>{{ '{:,.0f}'.format(kpi.total_keluar) if kpi else 0 }}</h3>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="stat-card">
+                                <h6>Material Unik</h6>
+                                <h3>{{ kpi.unik_material if kpi else 0 }}</h3>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="stat-card">
+                                <h6>Grand Total Cost</h6>
+                                <h3>{{ kpi.grand_total if kpi else 'Rp 0' }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Trend -->
+                    {% if trend_html %}
+                    <div class="card chart-card mb-4">
+                        <div class="card-header">
+                            <h6><i class="bi bi-graph-up"></i> Tren Pemakaian</h6>
+                        </div>
+                        <div class="card-body">
+                            {{ trend_html|safe }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Cost & InOut -->
+                    <div class="row g-4 mb-4">
+                        {% if cost_html %}
+                        <div class="col-md-6">
+                            <div class="card chart-card">
+                                <div class="card-header">
+                                    <h6><i class="bi bi-cash-stack"></i> Top 10 Cost</h6>
+                                </div>
+                                <div class="card-body">
+                                    {{ cost_html|safe }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if inout_html %}
+                        <div class="col-md-6">
+                            <div class="card chart-card">
+                                <div class="card-header">
+                                    <h6><i class="bi bi-arrow-left-right"></i> Top 10 Inbound vs Outbound</h6>
+                                </div>
+                                <div class="card-body">
+                                    {{ inout_html|safe }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Detail -->
+                    {% if detail_html %}
+                    <div class="card chart-card">
+                        <div class="card-header">
+                            <h6><i class="bi bi-list-ul"></i> Detail Pemakaian</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                {{ detail_html|safe }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- PAGE: PROPOSE -->
+            <!-- ============================================================ -->
+            {% elif page == 'propose' %}
+
+            <div class="row">
+                <!-- Filter -->
+                <div class="col-lg-3 mb-4">
+                    <div class="card filter-card">
+                        <div class="card-header">
+                            <h6><i class="bi bi-sliders2"></i> Filter</h6>
+                        </div>
+                        <div class="card-body">
+                            <form method="get" action="{{ url_for('propose') }}">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">PLTD</label>
+                                    <select class="form-select form-select-sm" name="pltd" multiple size="4">
+                                        {% for p in pltd_list %}
+                                        <option value="{{ p }}" {% if p in selected_pltd %}selected{% endif %}>
+                                            {{ p }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Jumlah Bulan Order</label>
+                                    <input type="number" class="form-control form-control-sm" name="jb" 
+                                           value="{{ jb }}" min="1" max="12">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Status</label>
+                                    <select class="form-select form-select-sm" name="status" multiple size="4">
+                                        {% for s in status_list %}
+                                        <option value="{{ s }}" {% if s in selected_status %}selected{% endif %}>
+                                            {{ s }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-funnel"></i> Terapkan Filter
+                                    </button>
+                                    <a href="{{ url_for('propose') }}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="bi bi-arrow-counterclockwise"></i> Reset
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Data -->
+                <div class="col-lg-9">
+                    {% if error %}
+                    <div class="alert alert-warning">{{ error }}</div>
+                    {% else %}
+                    
+                    <!-- Sisa Bulan -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0"><i class="bi bi-clock"></i> Sisa Stok Preventive (Bulan)</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                                {{ sisa_html|safe }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- PM -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0"><i class="bi bi-clipboard-check"></i> Kebutuhan Per Bulan (PM)</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                                {{ pm_html|safe }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- CF Aktual -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-secondary text-white">
+                            <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Kebutuhan Per Bulan (CF Aktual)</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+                                {{ cf_html|safe }}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Propose Delivery -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-success text-white">
+                            <h6 class="mb-0"><i class="bi bi-truck"></i> Propose Delivery ({{ jb }} Bulan)</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 450px; overflow-y: auto;">
+                                {{ propose_html|safe }}
+                            </div>
+                            <div class="p-2 bg-light border-top">
+                                <small class="text-muted">
+                                    🟢 0 (Tidak perlu) | 🟡 1-49 | 🟠 50-199 | 🔴 200-999 | ⛔ ≥1000
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Rekomendasi -->
+                    <div class="row g-4">
+                        {% if urg_html %}
+                        <div class="col-md-6">
+                            <div class="card border-danger">
+                                <div class="card-header bg-danger text-white">
+                                    <h6 class="mb-0">🔴 URGENT ({{ total_urg }} material)</h6>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                                        {{ urg_html|safe }}
+                                    </div>
+                                    <div class="p-2 bg-light border-top">
+                                        <strong>Total: {{ '{:,.0f}'.format(total_urg_qty) }} unit</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if wrn_html %}
+                        <div class="col-md-6">
+                            <div class="card border-warning">
+                                <div class="card-header bg-warning">
+                                    <h6 class="mb-0">🟠 WARNING ({{ total_wrn }} material)</h6>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                                        {{ wrn_html|safe }}
+                                    </div>
+                                    <div class="p-2 bg-light border-top">
+                                        <strong>Total: {{ '{:,.0f}'.format(total_wrn_qty) }} unit</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if not urg_html and not wrn_html %}
+                        <div class="col-12">
+                            <div class="alert alert-success">
+                                <i class="bi bi-check-circle-fill"></i> 
+                                Semua material dalam kondisi aman. Tidak ada rekomendasi order urgent.
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- ============================================================ -->
+            <!-- PAGE: TRANSAKSI -->
+            <!-- ============================================================ -->
+            {% else %}
+
+            <div class="row">
+                <!-- Filter -->
+                <div class="col-lg-3 mb-4">
+                    <div class="card filter-card">
+                        <div class="card-header">
+                            <h6><i class="bi bi-sliders2"></i> Filter</h6>
+                        </div>
+                        <div class="card-body">
+                            <form method="get" action="{{ url_for('transaksi') }}">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Project</label>
+                                    <select class="form-select form-select-sm" name="proj" multiple size="2">
+                                        {% for p in proj_list %}
+                                        <option value="{{ p }}" {% if p in selected_proj %}selected{% endif %}>
+                                            {{ p }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Tahun</label>
+                                    <select class="form-select form-select-sm" name="year" multiple size="3">
+                                        {% for y in year_list %}
+                                        <option value="{{ y }}" {% if y in selected_year %}selected{% endif %}>
+                                            {{ y }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Bulan</label>
+                                    <select class="form-select form-select-sm" name="month" multiple size="4">
+                                        {% for m in month_list %}
+                                        <option value="{{ m }}" {% if m in selected_month %}selected{% endif %}>
+                                            {{ m }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                {% if stat_list %}
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Status</label>
+                                    <select class="form-select form-select-sm" name="stat" multiple size="3">
+                                        {% for s in stat_list %}
+                                        <option value="{{ s }}" {% if s in selected_stat %}selected{% endif %}>
+                                            {{ s }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Site</label>
+                                    <select class="form-select form-select-sm" name="site" multiple size="3">
+                                        {% for s in site_list %}
+                                        <option value="{{ s }}" {% if s in selected_site %}selected{% endif %}>
+                                            {{ s }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-funnel"></i> Terapkan Filter
+                                    </button>
+                                    <a href="{{ url_for('transaksi') }}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="bi bi-arrow-counterclockwise"></i> Reset
+                                    </a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Data -->
+                <div class="col-lg-9">
+                    {% if error %}
+                    <div class="alert alert-warning">{{ error }}</div>
+                    {% else %}
+                    
+                    <!-- KPI -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-6 col-md-3">
+                            <div class="stat-card">
+                                <h6>Total Order</h6>
+                                <h3>{{ kpi.total_order if kpi else 0 }}</h3>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="stat-card">
+                                <h6>Total QTY</h6>
+                                <h3>{{ '{:,.0f}'.format(kpi.total_qty) if kpi else 0 }}</h3>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="stat-card">
+                                <h6>Total Biaya</h6>
+                                <h3>{{ kpi.total_biaya if kpi else 'Rp 0' }}</h3>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="stat-card">
+                                <h6>Site Aktif</h6>
+                                <h3>{{ kpi.site_aktif if kpi else 0 }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Trend -->
+                    {% if trend_html %}
+                    <div class="card chart-card mb-4">
+                        <div class="card-header">
+                            <h6><i class="bi bi-graph-up"></i> Tren Permintaan Harian</h6>
+                        </div>
+                        <div class="card-body">
+                            {{ trend_html|safe }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Site & Item -->
+                    <div class="row g-4 mb-4">
+                        {% if site_html %}
+                        <div class="col-md-6">
+                            <div class="card chart-card">
+                                <div class="card-header">
+                                    <h6><i class="bi bi-building"></i> Top Site Request (QTY)</h6>
+                                </div>
+                                <div class="card-body">
+                                    {{ site_html|safe }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if item_html %}
+                        <div class="col-md-6">
+                            <div class="card chart-card">
+                                <div class="card-header">
+                                    <h6><i class="bi bi-box"></i> Top Requested Items</h6>
+                                </div>
+                                <div class="card-body">
+                                    {{ item_html|safe }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Outstanding -->
+                    {% if out_html %}
+                    <div class="card border-warning mb-4">
+                        <div class="card-header bg-warning">
+                            <h6 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Outstanding</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                                {{ out_html|safe }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Detail -->
+                    {% if detail_html %}
+                    <div class="card chart-card">
+                        <div class="card-header">
+                            <h6><i class="bi bi-list-ul"></i> Detail Movement Record</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                {{ detail_html|safe }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% endif %}
+                </div>
+            </div>
+
+            {% endif %}
+
+        </div> <!-- end content-wrapper -->
+    </div> <!-- end main-content -->
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Auto-submit filter when selection changes (optional)
+        document.addEventListener('DOMContentLoaded', function() {
+            const selects = document.querySelectorAll('select[multiple]');
+            selects.forEach(select => {
+                select.addEventListener('change', function() {
+                    // Only auto-submit if not holding Ctrl
+                    if (!this.multiple || !event.ctrlKey) {
+                        // this.closest('form').submit();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
