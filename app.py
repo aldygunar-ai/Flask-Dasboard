@@ -15,6 +15,9 @@ import os
 import json
 import time
 
+from dotenv import load_dotenv
+load_dotenv()  # ← Ini akan membaca file .env
+
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'ganti-dengan-secret-key-yang-aman')
 app.config['SESSION_TYPE'] = 'filesystem'
