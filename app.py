@@ -245,45 +245,41 @@ def is_valid(kode, nama):
     return True
 
 def get_client():
-    """Get Google Sheets client with multiple fallback methods"""
+    """Get Google Sheets client from credentials.json file"""
     try:
+        # ===== PRIORITAS UTAMA: credentials.json di folder proyek =====
+        if os.path.exists('credentials.json'):
+            print("✅ Menggunakan credentials.json")
+            return gspread.service_account('credentials.json')
+        
+        # ===== FALLBACK: coba di path alternatif =====
+        cred_paths = [
+            '/home/aldygunar/Flask-Dasboard/credentials.json',
+            os.path.join(os.path.dirname(__file__), 'credentials.json')
+        ]
+        for path in cred_paths:
+            if os.path.exists(path):
+                print(f"✅ Menggunakan credentials.json dari: {path}")
+                return gspread.service_account(path)
+        
+        # ===== FALLBACK TERAKHIR: environment variable (untuk kompatibilitas) =====
         gcp_json = os.environ.get('GCP_SERVICE_ACCOUNT', '')
         if gcp_json and gcp_json != '{}':
             try:
                 c = json.loads(gcp_json)
                 if c.get('private_key'):
                     c['private_key'] = c['private_key'].replace('\\n', '\n')
+                print("✅ Menggunakan GCP_SERVICE_ACCOUNT dari environment")
                 return gspread.service_account_from_dict(c)
-            except:
-                pass
+            except Exception as e:
+                print(f"⚠️ Gagal pakai env: {e}")
         
-        cred_paths = [
-            'credentials.json',
-            '/home/aldygunar/Flask-Dasboard/credentials.json',
-            os.path.join(os.path.dirname(__file__), 'credentials.json')
-        ]
-        for path in cred_paths:
-            if os.path.exists(path):
-                try:
-                    return gspread.service_account(path)
-                except:
-                    pass
-        
-        try:
-            import streamlit as st
-            c = dict(st.secrets["gcp_service_account"])
-            if c.get('private_key'):
-                c['private_key'] = c['private_key'].replace('\\n', '\n')
-            return gspread.service_account_from_dict(c)
-        except:
-            pass
-        
-        raise Exception("GCP credentials not found! Please set GCP_SERVICE_ACCOUNT environment variable or provide credentials.json")
+        raise Exception("❌ credentials.json tidak ditemukan! Letakkan file credentials.json di folder proyek.")
     
     except Exception as e:
-        print(f"Error loading credentials: {e}")
+        print(f"❌ Error loading credentials: {e}")
         raise
-
+        
 @cache.memoize(timeout=3600)  # Cache 1 jam
 def load_all():
     """Load all data from Google Sheets with caching"""
