@@ -1,0 +1,2198 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if page == 'home' %}Beranda{% elif page == 'stock' %}Stok PLTD{% elif page == 'analisis' %}Analisis{% elif page == 'propose' %}Propose Order{% elif page == 'distribusi' %}Distribusi Planner{% else %}Transaksi{% endif %} - PLTD Control Tower</title>
+    
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        /* ============================================================
+           ROOT VARIABLES
+           ============================================================ */
+        :root {
+            --sidebar-width: 270px;
+            --sidebar-collapsed: 72px;
+            --primary-dark: #0A1A2F;
+            --primary-blue: #1A3A5C;
+            --primary-mid: #2C6E9E;
+            --primary-light: #4A8EC7;
+            --accent-gold: #FFD966;
+            --accent-gold-dark: #E6B800;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+            --info: #3B82F6;
+            --gray-50: #F8FAFC;
+            --gray-100: #F1F5F9;
+            --gray-200: #E2E8F0;
+            --gray-300: #CBD5E1;
+            --gray-400: #94A3B8;
+            --gray-500: #64748B;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1E293B;
+            --gray-900: #0F172A;
+            --card-radius: 16px;
+            --card-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+            --card-shadow-hover: 0 8px 32px rgba(0,0,0,0.10);
+            --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --font-family: 'Inter', 'Segoe UI', sans-serif;
+            --bg-body: #F1F5F9;
+        }
+
+        [data-theme="dark"] {
+            --bg-body: #0F172A;
+            --gray-50: #1E293B;
+            --gray-100: #2D3748;
+            --gray-200: #4A5568;
+            --gray-300: #718096;
+            --gray-400: #A0AEC0;
+            --gray-500: #CBD5E1;
+            --gray-600: #E2E8F0;
+            --gray-700: #EDF2F7;
+            --gray-800: #F7FAFC;
+            --gray-900: #FFFFFF;
+            --card-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.2);
+            --card-shadow-hover: 0 8px 32px rgba(0,0,0,0.4);
+        }
+
+        * { font-family: var(--font-family); margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: var(--bg-body); transition: background var(--transition); min-height: 100vh; overflow-x: hidden; }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
+
+        /* ===== LOADING OVERLAY ===== */
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 26, 47, 0.92); backdrop-filter: blur(12px);
+            z-index: 99999; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+            opacity: 0; visibility: hidden;
+        }
+        .loading-overlay.active { opacity: 1; visibility: visible; }
+        .loading-overlay .spinner-container {
+            position: relative; width: 80px; height: 80px; margin-bottom: 24px;
+        }
+        .loading-overlay .spinner-ring {
+            position: absolute; width: 100%; height: 100%;
+            border: 3px solid transparent; border-top-color: var(--accent-gold);
+            border-radius: 50%; animation: spin 1s linear infinite;
+        }
+        .loading-overlay .spinner-ring:nth-child(2) {
+            width: 60px; height: 60px; top: 10px; left: 10px;
+            border-top-color: #FFD966; animation-duration: 1.5s; animation-direction: reverse;
+        }
+        .loading-overlay .spinner-ring:nth-child(3) {
+            width: 40px; height: 40px; top: 20px; left: 20px;
+            border-top-color: #FFD966; animation-duration: 2s;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loading-overlay .loading-text { color: white; font-size: 1.4rem; font-weight: 700; letter-spacing: 0.5px; }
+        .loading-overlay .loading-subtext { color: rgba(255,255,255,0.6); font-size: 0.9rem; margin-top: 4px; }
+        .loading-overlay .loading-progress {
+            width: 320px; max-width: 80%; height: 4px;
+            background: rgba(255,255,255,0.1); border-radius: 10px;
+            overflow: hidden; margin-top: 16px;
+        }
+        .loading-overlay .loading-progress-bar {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, #FFD966, #FFB800);
+            border-radius: 10px; animation: progress-loading 2.5s ease-in-out infinite;
+        }
+        @keyframes progress-loading {
+            0% { width: 0%; } 50% { width: 70%; } 100% { width: 100%; }
+        }
+        .loading-overlay .loading-detail {
+            color: rgba(255,255,255,0.3); font-size: 0.7rem; margin-top: 10px;
+            font-weight: 300; letter-spacing: 0.3px;
+        }
+
+        /* ===== TOAST ===== */
+        .toast-container-custom {
+            position: fixed; top: 20px; right: 20px;
+            z-index: 99998; display: flex; flex-direction: column;
+            gap: 10px; max-width: 400px; width: 100%;
+        }
+        .toast-custom {
+            padding: 14px 20px; border-radius: 12px; color: white;
+            font-weight: 500; font-size: 0.9rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            animation: toastIn 0.4s ease; display: flex; align-items: center;
+            gap: 12px; backdrop-filter: blur(8px);
+        }
+        .toast-custom.success { background: linear-gradient(135deg, #10B981, #34D399); }
+        .toast-custom.error { background: linear-gradient(135deg, #EF4444, #F87171); }
+        .toast-custom.warning { background: linear-gradient(135deg, #F59E0B, #FBBF24); }
+        .toast-custom.info { background: linear-gradient(135deg, #3B82F6, #60A5FA); }
+        .toast-custom i { font-size: 1.2rem; }
+        @keyframes toastIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            position: fixed; top: 0; left: 0; width: var(--sidebar-width);
+            height: 100%; background: linear-gradient(180deg, #0A1A2F 0%, #0F2847 100%);
+            color: white; padding: 0; z-index: 1000;
+            transition: all var(--transition); overflow-y: auto; overflow-x: hidden;
+            border-right: 1px solid rgba(255,255,255,0.05);
+        }
+        [data-theme="dark"] .sidebar { background: linear-gradient(180deg, #0A0A1A 0%, #1A1A2E 100%); }
+        .sidebar::-webkit-scrollbar { width: 3px; }
+        .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+
+        .sidebar-brand {
+            padding: 20px 20px 16px; border-bottom: 1px solid rgba(255,255,255,0.06);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .sidebar-brand h3 {
+            font-weight: 800; font-size: 1.15rem; margin: 0;
+            color: var(--accent-gold); display: flex; align-items: center; gap: 10px;
+        }
+        .sidebar-brand h3 i { font-size: 1.3rem; }
+        .sidebar-brand .badge {
+            font-size: 0.6rem; padding: 4px 10px; border-radius: 20px;
+            background: rgba(255,217,102,0.15); color: var(--accent-gold);
+            border: 1px solid rgba(255,217,102,0.2);
+        }
+
+        .sidebar-user {
+            padding: 16px 20px; display: flex; align-items: center;
+            gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .sidebar-user .user-avatar {
+            width: 42px; height: 42px; border-radius: 50%;
+            background: var(--accent-gold); color: #0A1A2F;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 1.1rem; flex-shrink: 0;
+        }
+        .sidebar-user .user-info { flex: 1; min-width: 0; }
+        .sidebar-user .user-name { font-weight: 600; font-size: 0.9rem; }
+        .sidebar-user .user-status { font-size: 0.7rem; opacity: 0.6; }
+        .sidebar-user .user-status i { font-size: 0.4rem; margin-right: 4px; }
+
+        .sidebar .nav { padding: 12px 0; }
+        .sidebar .nav-item { padding: 0 12px; }
+        .sidebar .nav-link {
+            color: rgba(255,255,255,0.6); padding: 10px 16px;
+            border-radius: 10px; transition: all var(--transition);
+            font-weight: 500; font-size: 0.85rem; text-decoration: none;
+            display: flex; align-items: center; gap: 12px; position: relative;
+        }
+        .sidebar .nav-link:hover { color: white; background: rgba(255,217,102,0.08); }
+        .sidebar .nav-link.active {
+            color: #0A1A2F; background: var(--accent-gold); font-weight: 600;
+        }
+        .sidebar .nav-link i { font-size: 1.15rem; width: 22px; text-align: center; flex-shrink: 0; }
+        .sidebar .nav-link .nav-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .sidebar-footer {
+            padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.05);
+            margin-top: auto;
+        }
+        .sidebar-footer small { font-size: 0.65rem; opacity: 0.5; }
+
+        .sidebar.collapsed { width: var(--sidebar-collapsed); }
+        .sidebar.collapsed .sidebar-brand h3 span,
+        .sidebar.collapsed .sidebar-brand .badge,
+        .sidebar.collapsed .sidebar-user .user-info,
+        .sidebar.collapsed .nav-link .nav-label,
+        .sidebar.collapsed .sidebar-footer > div > div:last-child { display: none; }
+        .sidebar.collapsed .sidebar-brand h3 { font-size: 1.4rem; }
+        .sidebar.collapsed .sidebar-user { justify-content: center; }
+        .sidebar.collapsed .nav-link { justify-content: center; padding: 12px; }
+        .sidebar.collapsed .nav-link i { margin: 0; font-size: 1.3rem; width: auto; }
+        .sidebar.collapsed .sidebar-footer { text-align: center; }
+
+        .sidebar-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
+            z-index: 999; display: none; opacity: 0;
+            transition: opacity var(--transition);
+        }
+        .sidebar-overlay.active { display: block; opacity: 1; }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            min-height: 100vh; transition: margin var(--transition); padding: 0;
+        }
+        .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
+
+        /* ===== TOP NAVBAR ===== */
+        .top-navbar {
+            background: rgba(255,255,255,0.85); backdrop-filter: blur(12px);
+            padding: 12px 28px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            position: sticky; top: 0; z-index: 998;
+            border-bottom: 1px solid rgba(0,0,0,0.04);
+            display: flex; justify-content: space-between; align-items: center;
+            transition: background var(--transition);
+        }
+        [data-theme="dark"] .top-navbar {
+            background: rgba(15,23,42,0.85);
+            border-bottom-color: rgba(255,255,255,0.05);
+        }
+        .top-navbar .page-title h5 {
+            font-weight: 700; margin: 0; color: var(--gray-800); font-size: 1.1rem;
+        }
+        [data-theme="dark"] .top-navbar .page-title h5 { color: white; }
+        .top-navbar .page-title small { font-size: 0.75rem; color: var(--gray-400); }
+        .top-navbar .navbar-actions {
+            display: flex; align-items: center; gap: 12px;
+        }
+        .top-navbar .navbar-actions .live-indicator {
+            font-size: 0.7rem; padding: 4px 12px; border-radius: 20px;
+            background: rgba(16,185,129,0.12); color: var(--success);
+            font-weight: 600; display: flex; align-items: center; gap: 6px;
+        }
+        .top-navbar .navbar-actions .live-indicator i { font-size: 0.5rem; }
+        .top-navbar .navbar-actions .clock {
+            font-size: 0.8rem; color: var(--gray-500); font-weight: 500;
+        }
+        [data-theme="dark"] .top-navbar .navbar-actions .clock { color: var(--gray-400); }
+
+        .top-navbar .mobile-toggle {
+            display: none; background: none; border: none;
+            font-size: 1.4rem; color: var(--gray-700); padding: 4px 8px;
+            border-radius: 8px;
+        }
+        [data-theme="dark"] .top-navbar .mobile-toggle { color: white; }
+        .top-navbar .mobile-toggle:hover { background: var(--gray-100); }
+        [data-theme="dark"] .top-navbar .mobile-toggle:hover { background: rgba(255,255,255,0.05); }
+
+        /* ===== CONTENT WRAPPER ===== */
+        .content-wrapper { padding: 24px 28px 40px; }
+
+        /* ===== STAT CARDS ===== */
+        .stat-card {
+            background: white; border-radius: var(--card-radius);
+            padding: 20px 24px; box-shadow: var(--card-shadow);
+            transition: all var(--transition); border: 1px solid rgba(0,0,0,0.03);
+            height: 100%; position: relative; overflow: hidden;
+        }
+        [data-theme="dark"] .stat-card {
+            background: #1E293B; border-color: rgba(255,255,255,0.04);
+        }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: var(--card-shadow-hover); }
+        .stat-card .stat-icon {
+            width: 44px; height: 44px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem; color: white; margin-bottom: 12px; flex-shrink: 0;
+        }
+        .stat-card .stat-icon.blue { background: linear-gradient(135deg, #2C6E9E, #4A8EC7); }
+        .stat-card .stat-icon.green { background: linear-gradient(135deg, #10B981, #34D399); }
+        .stat-card .stat-icon.gold { background: linear-gradient(135deg, #F59E0B, #FBBF24); }
+        .stat-card .stat-icon.red { background: linear-gradient(135deg, #EF4444, #F87171); }
+        .stat-card .stat-icon.purple { background: linear-gradient(135deg, #8B5CF6, #A78BFA); }
+        .stat-card .stat-icon.cyan { background: linear-gradient(135deg, #06B6D4, #22D3EE); }
+        .stat-card .stat-icon.pink { background: linear-gradient(135deg, #EC4899, #F472B6); }
+        .stat-card .stat-icon.indigo { background: linear-gradient(135deg, #4F46E5, #818CF8); }
+
+        .stat-card .stat-label {
+            font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.5px; color: var(--gray-400); margin-bottom: 2px;
+        }
+        [data-theme="dark"] .stat-card .stat-label { color: var(--gray-500); }
+        .stat-card .stat-value {
+            font-size: 1.8rem; font-weight: 800; color: var(--gray-800);
+            line-height: 1.2;
+        }
+        [data-theme="dark"] .stat-card .stat-value { color: white; }
+        .stat-card .stat-value .counter { display: inline-block; }
+        .stat-card .stat-trend {
+            font-size: 0.65rem; font-weight: 600; padding: 2px 10px;
+            border-radius: 20px; margin-left: 8px; display: inline-flex;
+            align-items: center; gap: 4px;
+        }
+        .stat-trend.up { background: #D1FAE5; color: #065F46; }
+        .stat-trend.down { background: #FEE2E2; color: #991B1B; }
+        .stat-trend.neutral { background: #E2E8F0; color: #475569; }
+        [data-theme="dark"] .stat-trend.up { background: rgba(16,185,129,0.2); color: #34D399; }
+        [data-theme="dark"] .stat-trend.down { background: rgba(239,68,68,0.2); color: #F87171; }
+        [data-theme="dark"] .stat-trend.neutral { background: rgba(100,116,139,0.2); color: #94A3B8; }
+
+        /* ===== SECTION HEADERS ===== */
+        .section-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 16px;
+        }
+        .section-header h5 {
+            font-weight: 700; font-size: 1.05rem; color: var(--gray-800);
+            margin: 0; display: flex; align-items: center; gap: 8px;
+        }
+        [data-theme="dark"] .section-header h5 { color: white; }
+        .section-header .section-actions { display: flex; gap: 8px; align-items: center; }
+
+        /* ===== CHART CARDS ===== */
+        .chart-card {
+            border: none; border-radius: var(--card-radius);
+            box-shadow: var(--card-shadow); background: white;
+            transition: all var(--transition);
+        }
+        [data-theme="dark"] .chart-card { background: #1E293B; }
+        .chart-card:hover { box-shadow: var(--card-shadow-hover); }
+        .chart-card .card-header {
+            background: transparent; border-bottom: 1px solid var(--gray-200);
+            padding: 16px 20px; display: flex; justify-content: space-between;
+            align-items: center;
+        }
+        [data-theme="dark"] .chart-card .card-header { border-bottom-color: rgba(255,255,255,0.06); }
+        .chart-card .card-header h6 {
+            margin: 0; font-weight: 600; font-size: 0.9rem;
+            color: var(--gray-700); display: flex; align-items: center; gap: 8px;
+        }
+        [data-theme="dark"] .chart-card .card-header h6 { color: var(--gray-300); }
+        .chart-card .card-body { padding: 20px; }
+
+        /* ===== FILTER CARD ===== */
+        .filter-card {
+            border: none; border-radius: var(--card-radius);
+            box-shadow: var(--card-shadow); background: white;
+            position: sticky; top: 80px;
+        }
+        [data-theme="dark"] .filter-card { background: #1E293B; }
+        .filter-card .card-header {
+            background: var(--primary-dark); color: white;
+            border-radius: var(--card-radius) var(--card-radius) 0 0;
+            padding: 14px 20px; border: none;
+        }
+        [data-theme="dark"] .filter-card .card-header { background: #0F172A; }
+        .filter-card .card-header h6 { margin: 0; font-weight: 600; font-size: 0.9rem; }
+        .filter-card .card-body { padding: 20px; }
+
+        /* ===== TABLE ===== */
+        .table-wrapper { position: relative; overflow: hidden; border-radius: 12px; }
+        .table-scroll { max-height: 500px; overflow-y: auto; overflow-x: auto; }
+        .table-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+        .table-scroll::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 10px; }
+
+        .table { font-size: 0.8rem; margin-bottom: 0; width: 100%; border-collapse: separate; border-spacing: 0; }
+        [data-theme="dark"] .table { color: var(--gray-300); }
+        .table th {
+            background: var(--primary-dark); color: white;
+            font-weight: 600; padding: 10px 14px; border: none;
+            position: sticky; top: 0; z-index: 10;
+            white-space: nowrap; font-size: 0.7rem; text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        [data-theme="dark"] .table th { background: #0F172A; }
+        .table td { padding: 8px 14px; vertical-align: middle; border-bottom: 1px solid var(--gray-200); }
+        [data-theme="dark"] .table td { border-bottom-color: rgba(255,255,255,0.04); }
+        .table-hover tbody tr:hover { background: var(--gray-50); }
+        [data-theme="dark"] .table-hover tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+        .table-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+        .table-actions .btn-sm { padding: 4px 12px; font-size: 0.7rem; border-radius: 8px; }
+
+        /* ===== ALERT CARD ===== */
+        .alert-card {
+            border-radius: var(--card-radius); padding: 16px 20px;
+            border-left: 4px solid; margin-bottom: 10px;
+            transition: all var(--transition); background: white;
+            box-shadow: var(--card-shadow);
+        }
+        [data-theme="dark"] .alert-card { background: #1E293B; }
+        .alert-card.critical { border-left-color: var(--danger); }
+        .alert-card.warning { border-left-color: var(--warning); }
+        .alert-card.healthy { border-left-color: var(--success); }
+        .alert-card.info { border-left-color: var(--info); }
+        .alert-card:hover { transform: translateX(4px); box-shadow: var(--card-shadow-hover); }
+        .alert-card .alert-title { font-weight: 600; font-size: 0.85rem; color: var(--gray-700); }
+        [data-theme="dark"] .alert-card .alert-title { color: var(--gray-300); }
+        .alert-card .alert-detail { font-size: 0.75rem; color: var(--gray-500); }
+        [data-theme="dark"] .alert-card .alert-detail { color: var(--gray-400); }
+
+        /* ===== BADGE STATUS ===== */
+        .badge-status {
+            padding: 3px 10px; border-radius: 20px; font-size: 0.65rem;
+            font-weight: 600;
+        }
+        .badge-status.healthy { background: #D1FAE5; color: #065F46; }
+        .badge-status.warning { background: #FEF3C7; color: #92400E; }
+        .badge-status.critical { background: #FEE2E2; color: #991B1B; }
+        .badge-status.info { background: #DBEAFE; color: #1E40AF; }
+        .badge-status.shipping { background: #E0E7FF; color: #3730A3; }
+        [data-theme="dark"] .badge-status.healthy { background: rgba(16,185,129,0.2); color: #34D399; }
+        [data-theme="dark"] .badge-status.warning { background: rgba(245,158,11,0.2); color: #FBBF24; }
+        [data-theme="dark"] .badge-status.critical { background: rgba(239,68,68,0.2); color: #F87171; }
+
+        /* ===== INSIGHT CARD ===== */
+        .insight-card {
+            border-radius: var(--card-radius); padding: 16px 20px;
+            background: white; box-shadow: var(--card-shadow);
+            border-left: 4px solid; transition: all var(--transition);
+        }
+        [data-theme="dark"] .insight-card { background: #1E293B; }
+        .insight-card:hover { transform: translateY(-2px); box-shadow: var(--card-shadow-hover); }
+        .insight-card.critical { border-left-color: var(--danger); }
+        .insight-card.warning { border-left-color: var(--warning); }
+        .insight-card.healthy { border-left-color: var(--success); }
+        .insight-card.info { border-left-color: var(--info); }
+        .insight-card .insight-icon { font-size: 1.1rem; margin-right: 8px; }
+        .insight-card .insight-text { font-size: 0.85rem; font-weight: 500; color: var(--gray-700); }
+        [data-theme="dark"] .insight-card .insight-text { color: var(--gray-300); }
+        .insight-card .insight-sub { font-size: 0.7rem; color: var(--gray-400); }
+        [data-theme="dark"] .insight-card .insight-sub { color: var(--gray-500); }
+
+        /* ===== HEATMAP ===== */
+        .heatmap-0 { background-color: #E8F5E9 !important; color: #888 !important; }
+        .heatmap-1 { background-color: #FFF9C4 !important; }
+        .heatmap-2 { background-color: #FFE0B2 !important; font-weight: bold; }
+        .heatmap-3 { background-color: #FFAB91 !important; font-weight: bold; color: #BF360C !important; }
+        .heatmap-4 { background-color: #EF5350 !important; font-weight: bold; color: white !important; }
+
+        /* ===== FLOATING SEARCH ===== */
+        .floating-search {
+            position: fixed; bottom: 30px; right: 30px; z-index: 999;
+        }
+        .floating-search .search-btn {
+            width: 52px; height: 52px; border-radius: 50%;
+            background: var(--primary-dark); color: white; border: none;
+            box-shadow: 0 4px 20px rgba(10,26,47,0.3); font-size: 1.2rem;
+            transition: all var(--transition); display: flex;
+            align-items: center; justify-content: center;
+        }
+        [data-theme="dark"] .floating-search .search-btn {
+            background: var(--accent-gold); color: #0A1A2F;
+            box-shadow: 0 4px 20px rgba(255,217,102,0.3);
+        }
+        .floating-search .search-btn:hover { transform: scale(1.05); }
+        .floating-search .search-dropdown {
+            position: absolute; bottom: 70px; right: 0;
+            width: 360px; max-width: 90vw; background: white;
+            border-radius: var(--card-radius); box-shadow: var(--card-shadow-hover);
+            padding: 16px; display: none; border: 1px solid var(--gray-200);
+        }
+        [data-theme="dark"] .floating-search .search-dropdown {
+            background: #1E293B; border-color: rgba(255,255,255,0.06);
+        }
+        .floating-search .search-dropdown.open { display: block; }
+        .floating-search .search-dropdown input {
+            width: 100%; padding: 10px 14px; border-radius: 10px;
+            border: 1px solid var(--gray-200); font-size: 0.9rem;
+            background: var(--gray-50);
+        }
+        [data-theme="dark"] .floating-search .search-dropdown input {
+            background: #0F172A; border-color: rgba(255,255,255,0.06); color: white;
+        }
+
+        /* ===== DARK MODE TOGGLE ===== */
+        .dark-toggle {
+            background: none; border: 1px solid var(--gray-200);
+            border-radius: 50px; padding: 6px 14px; font-size: 0.85rem;
+            transition: all var(--transition); cursor: pointer;
+            color: var(--gray-600);
+        }
+        [data-theme="dark"] .dark-toggle {
+            border-color: rgba(255,255,255,0.1); color: var(--accent-gold);
+        }
+        .dark-toggle:hover { background: var(--gray-100); }
+        [data-theme="dark"] .dark-toggle:hover { background: rgba(255,255,255,0.05); }
+
+        .notification-bell {
+            position: relative; cursor: pointer; padding: 4px 8px;
+            border-radius: 8px; transition: background var(--transition);
+        }
+        .notification-bell:hover { background: var(--gray-100); }
+        [data-theme="dark"] .notification-bell:hover { background: rgba(255,255,255,0.05); }
+        .notification-bell .badge-dot {
+            position: absolute; top: 2px; right: 4px;
+            width: 8px; height: 8px; background: var(--danger);
+            border-radius: 50%; border: 2px solid white;
+        }
+        [data-theme="dark"] .notification-bell .badge-dot { border-color: #0F172A; }
+
+        .app-footer {
+            padding: 16px 28px; border-top: 1px solid var(--gray-200);
+            background: white; text-align: center; font-size: 0.75rem;
+            color: var(--gray-400);
+        }
+        [data-theme="dark"] .app-footer {
+            background: #0F172A; border-top-color: rgba(255,255,255,0.04);
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 992px) {
+            .sidebar { transform: translateX(-100%); width: 280px; }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar.collapsed { width: 280px; }
+            .sidebar.collapsed .sidebar-brand h3 span,
+            .sidebar.collapsed .sidebar-brand .badge,
+            .sidebar.collapsed .sidebar-user .user-info,
+            .sidebar.collapsed .nav-link .nav-label,
+            .sidebar.collapsed .sidebar-footer > div > div:last-child { display: block; }
+            .sidebar.collapsed .nav-link { justify-content: flex-start; padding: 10px 16px; }
+            .sidebar.collapsed .nav-link i { margin-right: 12px; font-size: 1.15rem; width: 22px; }
+            .sidebar.collapsed .sidebar-footer { text-align: left; }
+            .sidebar.collapsed ~ .main-content { margin-left: 0; }
+            .main-content { margin-left: 0; }
+            .top-navbar .mobile-toggle { display: block; }
+            .top-navbar { padding: 10px 16px; }
+            .content-wrapper { padding: 16px; }
+            .stat-card .stat-value { font-size: 1.4rem; }
+            .top-navbar .navbar-actions .clock { display: none; }
+            .floating-search .search-dropdown { width: 300px; right: -60px; }
+        }
+
+        @media (max-width: 576px) {
+            .stat-card { padding: 16px; }
+            .stat-card .stat-value { font-size: 1.2rem; }
+            .stat-card .stat-icon { width: 36px; height: 36px; font-size: 1rem; }
+            .section-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .top-navbar .navbar-actions .live-indicator span { display: none; }
+            .floating-search .search-dropdown { width: 280px; right: -80px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LOADING OVERLAY -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner-container">
+            <div class="spinner-ring"></div>
+            <div class="spinner-ring"></div>
+            <div class="spinner-ring"></div>
+        </div>
+        <div class="loading-text" id="loadingText">⚡ Memuat Control Tower</div>
+        <div class="loading-subtext" id="loadingSubText">Menghubungkan ke Google Sheets...</div>
+        <div class="loading-progress">
+            <div class="loading-progress-bar" id="loadingProgressBar"></div>
+        </div>
+        <div class="loading-detail" id="loadingDetail">Mengambil data dari 18 PLTD...</div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div class="toast-container-custom" id="toastContainer"></div>
+
+    <!-- SIDEBAR OVERLAY -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ===== SIDEBAR ===== -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <h3>
+                <i class="bi bi-grid-1x2-fill"></i>
+                <span>BACH GROUP</span>
+            </h3>
+            <span class="badge">PLTD</span>
+        </div>
+        <div class="sidebar-user">
+            <div class="user-avatar">P</div>
+            <div class="user-info">
+                <div class="user-name">PLTD Admin</div>
+                <div class="user-status"><i class="bi bi-circle-fill" style="color: #10B981;"></i> Online</div>
+            </div>
+        </div>
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link {% if page == 'home' %}active{% endif %}" href="{{ url_for('home') }}" onclick="showLoading()">
+                    <i class="bi bi-house-fill"></i>
+                    <span class="nav-label">Beranda</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if page == 'stock' %}active{% endif %}" href="{{ url_for('stock') }}" onclick="showLoading()">
+                    <i class="bi bi-box-seam-fill"></i>
+                    <span class="nav-label">Stok PLTD</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if page == 'analisis' %}active{% endif %}" href="{{ url_for('analisis') }}" onclick="showLoading()">
+                    <i class="bi bi-bar-chart-fill"></i>
+                    <span class="nav-label">Analisis</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if page == 'propose' %}active{% endif %}" href="{{ url_for('propose') }}" onclick="showLoading()">
+                    <i class="bi bi-cart-plus-fill"></i>
+                    <span class="nav-label">Propose Order</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if page == 'distribusi' %}active{% endif %}" href="{{ url_for('distribusi') }}" onclick="showLoading()">
+                    <i class="bi bi-truck"></i>
+                    <span class="nav-label">Distribusi Planner</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if page == 'transaksi' %}active{% endif %}" href="{{ url_for('transaksi') }}" onclick="showLoading()">
+                    <i class="bi bi-truck"></i>
+                    <span class="nav-label">Transaksi</span>
+                </a>
+            </li>
+        </ul>
+        <div class="sidebar-footer">
+            <div class="d-flex align-items-center gap-2">
+                <img src="https://ui-avatars.com/api/?name=PLTD&background=FFD966&color=0A2540&size=30" alt="logo" style="border-radius: 50%;">
+                <div>
+                    <small class="d-block" style="font-size: 0.6rem; opacity:0.5;">Powered by</small>
+                    <small style="font-size: 0.7rem; font-weight:600;">Bach Group Logistics</small>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <div class="main-content" id="mainContent">
+
+        <!-- TOP NAVBAR -->
+        <nav class="top-navbar">
+            <div class="d-flex align-items-center gap-2">
+                <button class="mobile-toggle" id="mobileToggle" onclick="toggleSidebar()">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="page-title">
+                    <h5>
+                        {% if page == 'home' %}🏠 Control Tower
+                        {% elif page == 'stock' %}📦 Stok Material
+                        {% elif page == 'analisis' %}📊 Analisis Pemakaian
+                        {% elif page == 'propose' %}📋 Propose Order
+                        {% elif page == 'distribusi' %}🚚 Distribusi Planner
+                        {% else %}📦 Transaksi Project{% endif %}
+                    </h5>
+                    <small>Data real-time dari Google Sheets</small>
+                </div>
+            </div>
+            <div class="navbar-actions">
+                <span class="live-indicator">
+                    <i class="bi bi-circle-fill"></i>
+                    <span>Live</span>
+                </span>
+                <span class="clock" id="liveClock"></span>
+                <button class="dark-toggle" id="darkModeToggle" onclick="toggleDarkMode()">
+                    <i class="bi bi-moon-fill" id="darkModeIcon"></i>
+                </button>
+                <div class="notification-bell" onclick="showToast('📬 Tidak ada notifikasi baru', 'info')">
+                    <i class="bi bi-bell" style="font-size: 1.2rem; color: var(--gray-600);"></i>
+                    <span class="badge-dot" id="notifDot" style="display: none;"></span>
+                </div>
+            </div>
+        </nav>
+
+        <!-- ===== CONTENT WRAPPER ===== -->
+        <div class="content-wrapper">
+
+            <!-- ============================================================
+            PAGE: HOME
+            ============================================================ -->
+            {% if page == 'home' %}
+                    <!-- SECTION 1: Executive KPI -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-lg-6 col-md-6 col-12">
+            <div class="stat-card">
+                <div class="stat-icon blue"><i class="bi bi-geo-alt-fill"></i></div>
+                <div class="stat-label">Total PLTD Aktif</div>
+                <div class="stat-value"><span class="counter" data-target="{{ metrics.pltd_aktif if metrics else 0 }}">0</span></div>
+                <div class="stat-trend up"><i class="bi bi-arrow-up"></i> 100%</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6 col-12">
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="bi bi-box-seam-fill"></i></div>
+                <div class="stat-label">Total Stock Material</div>
+                <div class="stat-value"><span class="counter" data-target="{{ metrics.total_stok_num if metrics else 0 }}">0</span></div>
+                <div class="stat-trend up"><i class="bi bi-arrow-up"></i> 12.5%</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6 col-12">
+            <div class="stat-card">
+                <div class="stat-icon gold"><i class="bi bi-tools"></i></div>
+                <div class="stat-label">Preventive Items</div>
+                <div class="stat-value"><span class="counter" data-target="{{ metrics.preventive if metrics else 0 }}">0</span></div>
+                <div class="stat-trend up"><i class="bi bi-arrow-up"></i> 8%</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6 col-12">
+            <div class="stat-card">
+                <div class="stat-icon red"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                <div class="stat-label">Critical Material</div>
+                <div class="stat-value"><span class="counter" data-target="{{ metrics.critical_count if metrics else 0 }}">0</span></div>
+                <div class="stat-trend down"><i class="bi bi-arrow-down"></i> 3.2%</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-lg-6 col-md-6 col-12">
+            <div class="stat-card">
+                <div class="stat-icon purple"><i class="bi bi-cash-stack"></i></div>
+                <div class="stat-label">Inventory Value</div>
+                <div class="stat-value"><span class="counter" data-target="{{ metrics.inventory_value if metrics else 0 }}" data-prefix="Rp " data-suffix="">0</span></div>
+                <div class="stat-trend neutral"><i class="bi bi-dash"></i> Stabil</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6 col-12">
+            <div class="stat-card">
+                <div class="stat-icon cyan"><i class="bi bi-truck"></i></div>
+                <div class="stat-label">On Delivery</div>
+                <div class="stat-value"><span class="counter" data-target="{{ metrics.on_delivery if metrics else 0 }}">0</span></div>
+                <div class="stat-trend up"><i class="bi bi-arrow-up"></i> 5%</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6 col-12">
+            <div class="stat-card">
+                <div class="stat-icon pink"><i class="bi bi-calendar-event"></i></div>
+                <div class="stat-label">Upcoming PM</div>
+                <div class="stat-value"><span class="counter" data-target="{{ metrics.upcoming_pm if metrics else 0 }}">0</span></div>
+                <div class="stat-trend warning"><i class="bi bi-clock"></i> Minggu ini</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6 col-12">
+            <div class="stat-card">
+                <div class="stat-icon indigo"><i class="bi bi-arrow-repeat"></i></div>
+                <div class="stat-label">Corrective Items</div>
+                <div class="stat-value"><span class="counter" data-target="{{ metrics.corrective if metrics else 0 }}">0</span></div>
+                <div class="stat-trend down"><i class="bi bi-arrow-down"></i> 3.2%</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 2: Operational Summary -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-4 col-12">
+            <div class="section-header">
+                <h5><i class="bi bi-exclamation-triangle-fill text-danger"></i> Critical Alert</h5>
+                <span class="badge bg-danger">Urgent</span>
+            </div>
+            {% if kritis_data %}
+                {% for item in kritis_data[:5] %}
+                <div class="alert-card critical">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="alert-title">{{ item.pltd }}</div>
+                            <div class="alert-detail">{{ item.material }} — Sisa: {{ item.sisa_bulan }} bulan</div>
+                        </div>
+                        <span class="badge-status critical">Kritis</span>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="alert-card healthy">
+                    <div class="alert-title">✅ Tidak ada material kritis</div>
+                    <div class="alert-detail">Semua material preventive dalam kondisi aman</div>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="col-lg-4 col-12">
+            <div class="section-header">
+                <h5><i class="bi bi-calendar-check text-warning"></i> Upcoming PM</h5>
+                <span class="badge bg-warning text-dark">Minggu ini</span>
+            </div>
+            {% if upcoming_pm %}
+                {% for pm in upcoming_pm[:5] %}
+                <div class="alert-card warning">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="alert-title">{{ pm.pltd }}</div>
+                            <div class="alert-detail">{{ pm.genset }} Genset — Kebutuhan: {{ pm.kebutuhan }}</div>
+                        </div>
+                        <span class="badge-status warning">{{ pm.tanggal }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="alert-card info">
+                    <div class="alert-title">📋 Tidak ada PM terjadwal</div>
+                    <div class="alert-detail">Semua PM telah selesai</div>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="col-lg-4 col-12">
+            <div class="section-header">
+                <h5><i class="bi bi-truck text-primary"></i> Shipment Monitor</h5>
+                <span class="badge bg-primary">Tracking</span>
+            </div>
+            <div class="card chart-card">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted" style="font-size:0.75rem;">Waiting</span>
+                            <span class="fw-bold">{{ shipment_stats.waiting if shipment_stats else 0 }}</span>
+                        </div>
+                        <div class="progress" style="height:6px;">
+                            <div class="progress-bar bg-secondary" style="width: {{ (shipment_stats.waiting / (shipment_stats.total or 1) * 100)|round|int if shipment_stats else 0 }}%;"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted" style="font-size:0.75rem;">Packing</span>
+                            <span class="fw-bold">{{ shipment_stats.packing if shipment_stats else 0 }}</span>
+                        </div>
+                        <div class="progress" style="height:6px;">
+                            <div class="progress-bar bg-info" style="width: {{ (shipment_stats.packing / (shipment_stats.total or 1) * 100)|round|int if shipment_stats else 0 }}%;"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted" style="font-size:0.75rem;">Shipping</span>
+                            <span class="fw-bold">{{ shipment_stats.shipping if shipment_stats else 0 }}</span>
+                        </div>
+                        <div class="progress" style="height:6px;">
+                            <div class="progress-bar bg-warning" style="width: {{ (shipment_stats.shipping / (shipment_stats.total or 1) * 100)|round|int if shipment_stats else 0 }}%;"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted" style="font-size:0.75rem;">Delivered</span>
+                            <span class="fw-bold">{{ shipment_stats.delivered if shipment_stats else 0 }}</span>
+                        </div>
+                        <div class="progress" style="height:6px;">
+                            <div class="progress-bar bg-success" style="width: {{ (shipment_stats.delivered / (shipment_stats.total or 1) * 100)|round|int if shipment_stats else 0 }}%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 3: Map & Charts -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-8 col-12">
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h6><i class="bi bi-map"></i> PLTD Status Map</h6>
+                    <span class="badge bg-primary">Interaktif</span>
+                </div>
+                <div class="card-body">
+                    {% if map_html %}
+                    {{ map_html|safe }}
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-map" style="font-size: 2rem;"></i>
+                        <p class="mt-2">Peta lokasi PLTD akan muncul di sini</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 col-12">
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h6><i class="bi bi-pie-chart"></i> Komposisi Stok</h6>
+                </div>
+                <div class="card-body">
+                    {% if pie_html %}
+                    {{ pie_html|safe }}
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-pie-chart" style="font-size: 2rem;"></i>
+                        <p class="mt-2">Data tidak tersedia</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 4: Trend Analytics -->
+    <div class="section-header">
+        <h5><i class="bi bi-graph-up-arrow text-primary"></i> Trend Analytics</h5>
+        <div class="section-actions">
+            <div class="btn-group btn-group-sm" role="group">
+                <button class="btn btn-outline-secondary" data-period="7">7H</button>
+                <button class="btn btn-outline-secondary active" data-period="30">30H</button>
+                <button class="btn btn-outline-secondary" data-period="90">90H</button>
+                <button class="btn btn-outline-secondary" data-period="365">1T</button>
+            </div>
+        </div>
+    </div>
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6 col-12">
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h6><i class="bi bi-arrow-up-circle text-success"></i> Consumption Trend</h6>
+                </div>
+                <div class="card-body">
+                    {% if trend_html %}
+                    {{ trend_html|safe }}
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-graph-up" style="font-size: 2rem;"></i>
+                        <p class="mt-2">Data trend tidak tersedia</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 col-12">
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h6><i class="bi bi-arrow-left-right text-info"></i> Inbound vs Outbound</h6>
+                </div>
+                <div class="card-body">
+                    {% if inout_html %}
+                    {{ inout_html|safe }}
+                    {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-arrow-left-right" style="font-size: 2rem;"></i>
+                        <p class="mt-2">Data tidak tersedia</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECTION 5: Management Insight -->
+    <div class="section-header">
+        <h5><i class="bi bi-lightbulb text-warning"></i> Management Insights</h5>
+        <span class="badge bg-warning text-dark">AI Recommendations</span>
+    </div>
+    <div class="row g-3 mb-4">
+        {% if insights %}
+            {% for insight in insights[:4] %}
+            <div class="col-lg-3 col-md-6 col-12">
+                <div class="insight-card {{ insight.level }}">
+                    <div class="d-flex align-items-start">
+                        <span class="insight-icon">{{ insight.icon }}</span>
+                        <div>
+                            <div class="insight-text">{{ insight.text }}</div>
+                            <div class="insight-sub">{{ insight.sub }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle-fill"></i> 
+                    Belum ada insight otomatis. Data akan terisi setelah pemrosesan.
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Footer Info -->
+    <div class="mt-4 p-3 bg-white rounded-3 text-center shadow-sm">
+        <small class="text-muted">
+            <i class="bi bi-clock-history"></i> Data diperbarui secara real-time dari Google Sheets | 
+            ⚡ Dashboard dikelola oleh Tim Logistik Bach
+        </small>
+    </div>
+
+            <!-- ============================================================
+            PAGE: STOCK
+            ============================================================ -->
+            {% elif page == 'stock' %}
+                    <div class="row">
+        <div class="col-lg-3 col-12 mb-4">
+            <div class="card filter-card">
+                <div class="card-header">
+                    <h6><i class="bi bi-sliders2"></i> Filter Stok</h6>
+                </div>
+                <div class="card-body">
+                    <form method="get" action="{{ url_for('stock') }}" id="filterForm">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">PLTD</label>
+                            <select class="form-select form-select-sm" name="pltd" multiple size="4">
+                                {% for pltd in pltd_list %}
+                                <option value="{{ pltd }}" {% if pltd in selected_pltd %}selected{% endif %}>
+                                    {{ pltd }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">Ctrl+Click untuk multi-select</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Jenis</label>
+                            <select class="form-select form-select-sm" name="jenis" multiple size="2">
+                                {% for j in jenis_list %}
+                                <option value="{{ j }}" {% if j in selected_jenis %}selected{% endif %}>
+                                    {{ j }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Nama Material</label>
+                            <select class="form-select form-select-sm" name="nama" multiple size="3">
+                                {% for n in nama_list[:20] %}
+                                <option value="{{ n }}" {% if n in selected_nama %}selected{% endif %}>
+                                    {{ n[:30] }}{% if n|length > 30 %}...{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Kode Material</label>
+                            <select class="form-select form-select-sm" name="kode" multiple size="3">
+                                {% for k in kode_list[:20] %}
+                                <option value="{{ k }}" {% if k in selected_kode %}selected{% endif %}>
+                                    {{ k }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" name="highlight" value="true" 
+                                   id="highlight" {% if highlight %}checked{% endif %}>
+                            <label class="form-check-label" for="highlight">
+                                🔴 Highlight kritis (≤1.5 bulan)
+                            </label>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-funnel"></i> Terapkan Filter
+                            </button>
+                            <a href="{{ url_for('stock') }}" class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-arrow-counterclockwise"></i> Reset
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-9 col-12">
+            {% if error %}
+            <div class="alert alert-warning">{{ error }}</div>
+            {% else %}
+            <div class="table-actions">
+                <button class="btn btn-success btn-sm" onclick="exportTableToExcel('preventiveTable', 'Preventive_Stock')">
+                    <i class="bi bi-file-excel"></i> Excel
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="exportTableToCSV('preventiveTable', 'Preventive_Stock')">
+                    <i class="bi bi-file-text"></i> CSV
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="exportTableToPDF('preventiveTable', 'Preventive_Stock')">
+                    <i class="bi bi-file-pdf"></i> PDF
+                </button>
+                <span class="ms-auto text-muted" style="font-size:0.7rem;">
+                    <i class="bi bi-info-circle"></i> Klik header untuk sort
+                </span>
+            </div>
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0"><i class="bi bi-shield-check"></i> Material Preventive</h6>
+                    <span class="badge bg-light text-dark">Total: {{ prev_count if prev_count else 0 }}</span>
+                </div>
+                <div class="card-body p-0">
+                    {% if prev_pivot %}
+                    <div class="table-wrapper">
+                        <div class="table-scroll" id="preventiveTable">
+                            {{ prev_pivot|safe }}
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted p-3">Tidak ada data Preventive.</p>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="bi bi-clock"></i> Sisa Stok Preventive (Bulan)</h6>
+                    <span class="badge bg-light text-dark">Kritis: {{ critical_count if critical_count else 0 }}</span>
+                </div>
+                <div class="card-body p-0">
+                    {% if sisa_pivot %}
+                    <div class="table-wrapper">
+                        <div class="table-scroll" id="sisaTable">
+                            {{ sisa_pivot|safe }}
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted p-3">Data Sisa Bulan tidak tersedia.</p>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header bg-warning">
+                    <h6 class="mb-0"><i class="bi bi-wrench"></i> Material Corrective</h6>
+                    <span class="badge bg-dark text-white">Total: {{ corr_count if corr_count else 0 }}</span>
+                </div>
+                <div class="card-body p-0">
+                    {% if corr_pivot %}
+                    <div class="table-wrapper">
+                        <div class="table-scroll" id="correctiveTable">
+                            {{ corr_pivot|safe }}
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted p-3">Tidak ada data Corrective.</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+            <!-- ============================================================
+            PAGE: ANALISIS
+            ============================================================ -->
+            {% elif page == 'analisis' %}
+                    <div class="row">
+        <div class="col-lg-3 col-12 mb-4">
+            <div class="card filter-card">
+                <div class="card-header">
+                    <h6><i class="bi bi-sliders2"></i> Filter Analisis</h6>
+                </div>
+                <div class="card-body">
+                    <form method="get" action="{{ url_for('analisis') }}">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Nama Material</label>
+                            <select class="form-select form-select-sm" name="nama" multiple size="3">
+                                {% for n in nama_list[:20] %}
+                                <option value="{{ n }}" {% if n in selected_nama %}selected{% endif %}>
+                                    {{ n[:30] }}{% if n|length > 30 %}...{% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% if gudang_list %}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Gudang</label>
+                            <select class="form-select form-select-sm" name="gudang" multiple size="3">
+                                {% for g in gudang_list %}
+                                <option value="{{ g }}" {% if g in selected_gudang %}selected{% endif %}>
+                                    {{ g }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Tahun</label>
+                            <select class="form-select form-select-sm" name="tahun" multiple size="3">
+                                {% for t in tahun_list %}
+                                <option value="{{ t }}" {% if t in selected_tahun %}selected{% endif %}>
+                                    {{ t }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Bulan</label>
+                            <select class="form-select form-select-sm" name="periode" multiple size="4">
+                                {% for p in periode_list %}
+                                <option value="{{ p }}" {% if p in selected_periode %}selected{% endif %}>
+                                    {{ p }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-funnel"></i> Terapkan Filter
+                            </button>
+                            <a href="{{ url_for('analisis') }}" class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-arrow-counterclockwise"></i> Reset
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-9 col-12">
+            {% if error %}
+            <div class="alert alert-warning">{{ error }}</div>
+            {% else %}
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Transaksi</div>
+                        <div class="stat-value"><span class="counter" data-target="{{ kpi.total_trans if kpi else 0 }}">0</span></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Keluar</div>
+                        <div class="stat-value"><span class="counter" data-target="{{ kpi.total_keluar if kpi else 0 }}">0</span></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-label">Material Unik</div>
+                        <div class="stat-value"><span class="counter" data-target="{{ kpi.unik_material if kpi else 0 }}">0</span></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-label">Grand Total Cost</div>
+                        <div class="stat-value" style="font-size:1.2rem;">{{ kpi.grand_total if kpi else 'Rp 0' }}</div>
+                    </div>
+                </div>
+            </div>
+            {% if trend_html %}
+            <div class="card chart-card mb-4">
+                <div class="card-header">
+                    <h6><i class="bi bi-graph-up"></i> Tren Pemakaian</h6>
+                    <span class="badge bg-info">Interaktif</span>
+                </div>
+                <div class="card-body">
+                    {{ trend_html|safe }}
+                </div>
+            </div>
+            {% endif %}
+            <div class="row g-4 mb-4">
+                {% if cost_html %}
+                <div class="col-md-6">
+                    <div class="card chart-card">
+                        <div class="card-header">
+                            <h6><i class="bi bi-cash-stack"></i> Top 10 Cost</h6>
+                        </div>
+                        <div class="card-body">
+                            {{ cost_html|safe }}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% if inout_html %}
+                <div class="col-md-6">
+                    <div class="card chart-card">
+                        <div class="card-header">
+                            <h6><i class="bi bi-arrow-left-right"></i> Top 10 Inbound vs Outbound</h6>
+                        </div>
+                        <div class="card-body">
+                            {{ inout_html|safe }}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% if detail_html %}
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h6><i class="bi bi-list-ul"></i> Detail Pemakaian</h6>
+                    <span class="badge bg-secondary">50 data terakhir</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-wrapper">
+                        <div class="table-scroll" id="analisisDetailTable">
+                            {{ detail_html|safe }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+            <!-- ============================================================
+            PAGE: PROPOSE
+            ============================================================ -->
+            {% elif page == 'propose' %}
+                    <div class="row">
+        <div class="col-lg-3 col-12 mb-4">
+            <div class="card filter-card">
+                <div class="card-header">
+                    <h6><i class="bi bi-sliders2"></i> Filter Propose</h6>
+                </div>
+                <div class="card-body">
+                    <form method="get" action="{{ url_for('propose') }}">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">PLTD</label>
+                            <select class="form-select form-select-sm" name="pltd" multiple size="4">
+                                {% for p in pltd_list %}
+                                <option value="{{ p }}" {% if p in selected_pltd %}selected{% endif %}>
+                                    {{ p }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Jumlah Bulan Order</label>
+                            <input type="number" class="form-control form-control-sm" name="jb" 
+                                   value="{{ jb }}" min="1" max="12">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Status</label>
+                            <select class="form-select form-select-sm" name="status" multiple size="4">
+                                {% for s in status_list %}
+                                <option value="{{ s }}" {% if s in selected_status %}selected{% endif %}>
+                                    {{ s }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-funnel"></i> Terapkan Filter
+                            </button>
+                            <a href="{{ url_for('propose') }}" class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-arrow-counterclockwise"></i> Reset
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-9 col-12">
+            {% if error %}
+            <div class="alert alert-warning">{{ error }}</div>
+            {% else %}
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="bi bi-clock"></i> Sisa Stok Preventive (Bulan)</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-wrapper">
+                        <div class="table-scroll" id="sisaProposeTable">
+                            {{ sisa_html|safe }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0"><i class="bi bi-clipboard-check"></i> Kebutuhan Per Bulan (PM)</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-wrapper">
+                        <div class="table-scroll" id="pmProposeTable">
+                            {{ pm_html|safe }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Kebutuhan Per Bulan (CF Aktual)</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-wrapper">
+                        <div class="table-scroll" id="cfProposeTable">
+                            {{ cf_html|safe }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0"><i class="bi bi-truck"></i> Propose Delivery ({{ jb }} Bulan)</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-wrapper">
+                        <div class="table-scroll" id="proposeDeliveryTable">
+                            {{ propose_html|safe }}
+                        </div>
+                    </div>
+                    <div class="p-2 bg-light border-top">
+                        <small class="text-muted">
+                            🟢 0 (Tidak perlu) | 🟡 1-49 | 🟠 50-199 | 🔴 200-999 | ⛔ ≥1000
+                        </small>
+                    </div>
+                </div>
+            </div>
+            <div class="row g-4">
+                {% if urg_html %}
+                <div class="col-md-6">
+                    <div class="card border-danger">
+                        <div class="card-header bg-danger text-white">
+                            <h6 class="mb-0">🔴 URGENT ({{ total_urg }} material)</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-wrapper">
+                                <div class="table-scroll" style="max-height: 300px;" id="urgentTable">
+                                    {{ urg_html|safe }}
+                                </div>
+                            </div>
+                            <div class="p-2 bg-light border-top">
+                                <strong>Total: {{ '{:,.0f}'.format(total_urg_qty) }} unit</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% if wrn_html %}
+                <div class="col-md-6">
+                    <div class="card border-warning">
+                        <div class="card-header bg-warning">
+                            <h6 class="mb-0">🟠 WARNING ({{ total_wrn }} material)</h6>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-wrapper">
+                                <div class="table-scroll" style="max-height: 300px;" id="warningTable">
+                                    {{ wrn_html|safe }}
+                                </div>
+                            </div>
+                            <div class="p-2 bg-light border-top">
+                                <strong>Total: {{ '{:,.0f}'.format(total_wrn_qty) }} unit</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% if not urg_html and not wrn_html %}
+                <div class="col-12">
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle-fill"></i> 
+                        Semua material dalam kondisi aman. Tidak ada rekomendasi order urgent.
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+            <!-- ============================================================
+            PAGE: DISTRIBUSI
+            ============================================================ -->
+            {% elif page == 'distribusi' %}
+                    <div class="row g-4">
+        <div class="col-lg-4 col-12">
+            <div class="card filter-card">
+                <div class="card-header">
+                    <h6><i class="bi bi-plus-circle"></i> Distribusi Planner</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ url_for('distribusi') }}">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">PLTD Tujuan</label>
+                            <select class="form-select" name="pltd_tujuan" multiple size="6" required>
+                                <option value="">-- Pilih PLTD --</option>
+                                {% for p in pltd_list %}
+                                <option value="{{ p }}" {% if p in selected_pltd %}selected{% endif %}>
+                                    {{ p }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">Ctrl+Click untuk multi-select</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Bulan PM</label>
+                            <select class="form-select" name="bulan_pm" multiple size="4" required>
+                                {% for b in bulan_list %}
+                                <option value="{{ b }}" {% if b in selected_bulan %}selected{% endif %}>
+                                    {{ b }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">Ctrl+Click untuk multi-select</small>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary" id="hitungBtn" onclick="this.innerHTML='<i class='bi bi-spinner bi-spin'></i> Menghitung...'; this.disabled=true;">
+                                <i class="bi bi-calculator"></i> Hitung Kebutuhan
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8 col-12">
+            {% if error %}
+            <div class="alert alert-warning">{{ error }}</div>
+            {% endif %}
+            {% if distribution_result %}
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Kebutuhan</div>
+                        <div class="stat-value"><span class="counter" data-target="{{ distribution_result.total_kebutuhan }}">0</span></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-label">Stok Tersedia</div>
+                        <div class="stat-value"><span class="counter" data-target="{{ distribution_result.stok_tersedia }}">0</span></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-label">Kekurangan</div>
+                        <div class="stat-value"><span class="counter" data-target="{{ distribution_result.kekurangan }}">0</span></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-label">Pemenuhan</div>
+                        <div class="stat-value">{{ distribution_result.persen_pemenuhan }}%</div>
+                    </div>
+                </div>
+            </div>
+            {% if distribution_result.ringkasan_pltd %}
+            <div class="card chart-card mb-4">
+                <div class="card-header">
+                    <h6><i class="bi bi-list-ul"></i> Ringkasan Event per PLTD</h6>
+                    <span class="badge bg-primary">{{ distribution_result.ringkasan_pltd|length }} PLTD</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-wrapper">
+                        <div class="table-scroll" style="max-height:300px;" id="ringkasanTable">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>PLTD</th>
+                                        <th>Total Genset</th>
+                                        {% for b in selected_bulan %}
+                                        <th>{{ b }}</th>
+                                        {% endfor %}
+                                        <th>Total Event</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in distribution_result.ringkasan_pltd %}
+                                    <tr>
+                                        <td><strong>{{ item.PLTD }}</strong></td>
+                                        <td>{{ item.Jumlah_Genset|round(0)|int }}</td>
+                                        {% for b in selected_bulan %}
+                                        <td>
+                                            {% for detail in item.Bulan_Detail %}
+                                                {% if detail.Bulan == b %}
+                                                <span class="badge bg-info">{{ detail.Event }}</span>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </td>
+                                        {% endfor %}
+                                        <td><span class="badge bg-success">{{ item.Total_Event }}</span></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h6><i class="bi bi-list-check"></i> Rekomendasi Distribusi Material</h6>
+                    <span class="badge bg-success">{{ distribution_result.rekomendasi|length }} item</span>
+                </div>
+                <div class="card-body p-0">
+                    {% if distribution_result.rekomendasi %}
+                    <div class="table-wrapper">
+                        <div class="table-scroll" style="max-height:400px;" id="distribusiTable">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>PLTD</th>
+                                        <th>Kode</th>
+                                        <th>Material</th>
+                                        <th>Total Event</th>
+                                        <th>Kebutuhan</th>
+                                        <th>Stok Tujuan</th>
+                                        <th>Kekurangan</th>
+                                        <th>Sumber</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in distribution_result.rekomendasi %}
+                                    <tr>
+                                        <td><strong>{{ item.PLTD }}</strong></td>
+                                        <td><code>{{ item.Kode }}</code></td>
+                                        <td>{{ item.Material }}</td>
+                                        <td>{{ item.Total_Event }}</td>
+                                        <td>{{ item.Kebutuhan }}</td>
+                                        <td>{{ item.Stok_Tujuan }}</td>
+                                        <td>
+                                            {% if item.Kekurangan > 0 %}
+                                            <span class="text-danger fw-bold">{{ item.Kekurangan }}</span>
+                                            {% else %}
+                                            <span class="text-success">0</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.Sumber %}
+                                            <span class="badge bg-info">{{ item.Sumber }}</span>
+                                            {% else %}
+                                            <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.Kekurangan == 0 %}
+                                            <span class="badge-status healthy">✅ Aman</span>
+                                            {% elif item.Sumber %}
+                                            <span class="badge-status shipping">🚚 Dapat dikirim</span>
+                                            {% else %}
+                                            <span class="badge-status critical">⚠️ Perlu order</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted p-3">Tidak ada rekomendasi distribusi.</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+            <!-- ============================================================
+            PAGE: TRANSAKSI (DEFAULT)
+            ============================================================ -->
+            {% else %}
+                    <div class="row">
+        <div class="col-lg-3 col-12 mb-4">
+            <div class="card filter-card">
+                <div class="card-header">
+                    <h6><i class="bi bi-sliders2"></i> Filter Transaksi</h6>
+                </div>
+                <div class="card-body">
+                    <form method="get" action="{{ url_for('transaksi') }}">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Project</label>
+                            <select class="form-select form-select-sm" name="proj" multiple size="2">
+                                {% for p in proj_list %}
+                                <option value="{{ p }}" {% if p in selected_proj %}selected{% endif %}>
+                                    {{ p }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">Ctrl+Click untuk multi-select</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Tahun</label>
+                            <select class="form-select form-select-sm" name="year" multiple size="3">
+                                {% for y in year_list %}
+                                <option value="{{ y }}" {% if y in selected_year %}selected{% endif %}>
+                                    {{ y }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Bulan</label>
+                            <select class="form-select form-select-sm" name="month" multiple size="4">
+                                {% for m in month_list %}
+                                <option value="{{ m }}" {% if m in selected_month %}selected{% endif %}>
+                                    {{ m }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% if stat_list %}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Status</label>
+                            <select class="form-select form-select-sm" name="stat" multiple size="3">
+                                {% for s in stat_list %}
+                                <option value="{{ s }}" {% if s in selected_stat %}selected{% endif %}>
+                                    {{ s }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Site</label>
+                            <select class="form-select form-select-sm" name="site" multiple size="3">
+                                {% for s in site_list %}
+                                <option value="{{ s }}" {% if s in selected_site %}selected{% endif %}>
+                                    {{ s }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-funnel"></i> Terapkan Filter
+                            </button>
+                            <a href="{{ url_for('transaksi') }}" class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-arrow-counterclockwise"></i> Reset
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-9 col-12">
+            {% if error %}
+            <div class="alert alert-warning">{{ error }}</div>
+            {% else %}
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Order</div>
+                        <div class="stat-value"><span class="counter" data-target="{{ kpi.total_order if kpi else 0 }}">0</span></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-label">Total QTY</div>
+                        <div class="stat-value"><span class="counter" data-target="{{ kpi.total_qty if kpi else 0 }}">0</span></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Biaya</div>
+                        <div class="stat-value" style="font-size:1.1rem;">{{ kpi.total_biaya if kpi else 'Rp 0' }}</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-label">Site Aktif</div>
+                        <div class="stat-value"><span class="counter" data-target="{{ kpi.site_aktif if kpi else 0 }}">0</span></div>
+                    </div>
+                </div>
+            </div>
+            {% if trend_html %}
+            <div class="card chart-card mb-4">
+                <div class="card-header">
+                    <h6><i class="bi bi-graph-up"></i> Tren Permintaan Harian</h6>
+                    <div class="section-actions">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="exportTableToPDF('transaksiTrend', 'Trend_Transaksi')">
+                            <i class="bi bi-file-pdf"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body" id="transaksiTrend">
+                    {{ trend_html|safe }}
+                </div>
+            </div>
+            {% endif %}
+            <div class="row g-4 mb-4">
+                {% if site_html %}
+                <div class="col-md-6">
+                    <div class="card chart-card">
+                        <div class="card-header">
+                            <h6><i class="bi bi-building"></i> Top Site Request</h6>
+                        </div>
+                        <div class="card-body">
+                            {{ site_html|safe }}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% if item_html %}
+                <div class="col-md-6">
+                    <div class="card chart-card">
+                        <div class="card-header">
+                            <h6><i class="bi bi-box"></i> Top Requested Items</h6>
+                        </div>
+                        <div class="card-body">
+                            {{ item_html|safe }}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% if out_html %}
+            <div class="card border-warning mb-4">
+                <div class="card-header bg-warning">
+                    <h6 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Outstanding</h6>
+                    <span class="badge bg-dark text-white">Perlu Tindakan</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-wrapper">
+                        <div class="table-scroll" style="max-height: 300px;" id="outstandingTable">
+                            {{ out_html|safe }}
+                        </div>
+                    </div>
+                    <div class="p-2 bg-light border-top">
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle"></i> Status selain DELIVERED dan CANCEL
+                            </small>
+                            <button class="btn btn-sm btn-success" onclick="exportTableToExcel('outstandingTable', 'Outstanding')">
+                                <i class="bi bi-file-excel"></i> Export
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% if detail_html %}
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h6><i class="bi bi-list-ul"></i> Detail Movement Record</h6>
+                    <div class="d-flex gap-2">
+                        <span class="badge bg-secondary">20 data terakhir</span>
+                        <button class="btn btn-sm btn-success" onclick="exportTableToExcel('transaksiDetailTable', 'Detail_Transaksi')">
+                            <i class="bi bi-file-excel"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="exportTableToPDF('transaksiDetailTable', 'Detail_Transaksi')">
+                            <i class="bi bi-file-pdf"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-wrapper">
+                        <div class="table-scroll" style="max-height: 400px;" id="transaksiDetailTable">
+                            {{ detail_html|safe }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+            {% endif %}
+
+        </div>
+
+        <!-- FOOTER -->
+        <footer class="app-footer">
+            <i class="bi bi-cpu"></i> PLTD Control Tower v3.0 | 
+            <i class="bi bi-clock"></i> {{ now if now else '2024' }} | 
+            <i class="bi bi-github"></i> Bach Group Logistics
+        </footer>
+    </div>
+
+    <!-- FLOATING SEARCH -->
+    <div class="floating-search" id="floatingSearch">
+        <button class="search-btn" onclick="toggleSearch()">
+            <i class="bi bi-search"></i>
+        </button>
+        <div class="search-dropdown" id="searchDropdown">
+            <input type="text" placeholder="Cari PLTD, Material, Kode..." id="searchInput" 
+                   onkeyup="handleSearch(this.value)">
+            <div id="searchResults" class="mt-2" style="max-height:200px; overflow-y:auto;"></div>
+        </div>
+    </div>
+
+    <!-- ===== SCRIPTS ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const icon = document.getElementById('darkModeIcon');
+            const isDark = html.getAttribute('data-theme') === 'dark';
+            
+            if (isDark) {
+                html.removeAttribute('data-theme');
+                icon.className = 'bi bi-moon-fill';
+                localStorage.setItem('theme', 'light');
+                showToast('☀️ Mode Terang', 'info');
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                icon.className = 'bi bi-sun-fill';
+                localStorage.setItem('theme', 'dark');
+                showToast('🌙 Mode Gelap', 'info');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.getElementById('darkModeIcon').className = 'bi bi-sun-fill';
+            }
+        });
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (window.innerWidth <= 992) {
+                sidebar.classList.toggle('open');
+                overlay.classList.toggle('active');
+            } else {
+                sidebar.classList.toggle('collapsed');
+            }
+        }
+
+        document.getElementById('sidebarOverlay').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.remove('open');
+            this.classList.remove('active');
+        });
+
+        function updateClock() {
+            const now = new Date();
+            const str = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('liveClock').textContent = str;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        function showLoading(message, subMessage) {
+            const overlay = document.getElementById('loadingOverlay');
+            const text = document.getElementById('loadingText');
+            const subText = document.getElementById('loadingSubText');
+            const progress = document.getElementById('loadingProgressBar');
+            const detail = document.getElementById('loadingDetail');
+            
+            if (text) text.textContent = message || '⚡ Memuat Control Tower';
+            if (subText) subText.textContent = subMessage || 'Menghubungkan ke Google Sheets...';
+            if (detail) detail.textContent = 'Mengambil data dari Google Sheets...';
+            
+            if (progress) {
+                progress.style.width = '0%';
+                progress.style.animation = 'none';
+                setTimeout(() => {
+                    progress.style.animation = 'progress-loading 2.5s ease-in-out infinite';
+                }, 100);
+            }
+            
+            overlay.classList.add('active');
+        }
+
+        function hideLoading() {
+            const overlay = document.getElementById('loadingOverlay');
+            const progress = document.getElementById('loadingProgressBar');
+            
+            if (progress) {
+                progress.style.width = '100%';
+                progress.style.animation = 'none';
+            }
+            
+            setTimeout(() => {
+                overlay.classList.remove('active');
+            }, 500);
+        }
+
+        function updateLoadingDetail(detail) {
+            const el = document.getElementById('loadingDetail');
+            if (el) el.textContent = detail;
+        }
+
+        function showToast(message, type, duration) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast-custom ' + (type || 'info');
+            
+            const icons = {
+                success: 'bi bi-check-circle-fill',
+                error: 'bi bi-x-circle-fill',
+                warning: 'bi bi-exclamation-triangle-fill',
+                info: 'bi bi-info-circle-fill'
+            };
+            
+            toast.innerHTML = '<i class="' + (icons[type] || icons.info) + '"></i><span>' + message + '</span>';
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.animation = 'toastIn 0.4s ease reverse';
+                setTimeout(() => toast.remove(), 400);
+            }, duration || 3000);
+        }
+
+        function animateCounters() {
+            document.querySelectorAll('.counter').forEach(counter => {
+                const target = parseInt(counter.dataset.target);
+                if (target === 0) { counter.textContent = '0'; return; }
+                const duration = 1500;
+                const startTime = performance.now();
+                const prefix = counter.dataset.prefix || '';
+                const suffix = counter.dataset.suffix || '';
+                
+                function updateCounter(currentTime) {
+                    const elapsed = currentTime - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    const eased = 1 - Math.pow(1 - progress, 3);
+                    const current = Math.floor(eased * target);
+                    counter.textContent = prefix + current.toLocaleString('id-ID') + suffix;
+                    if (progress < 1) {
+                        requestAnimationFrame(updateCounter);
+                    } else {
+                        counter.textContent = prefix + target.toLocaleString('id-ID') + suffix;
+                    }
+                }
+                requestAnimationFrame(updateCounter);
+            });
+        }
+
+        function toggleSearch() {
+            document.getElementById('searchDropdown').classList.toggle('open');
+            if (document.getElementById('searchDropdown').classList.contains('open')) {
+                document.getElementById('searchInput').focus();
+            }
+        }
+
+        function handleSearch(value) {
+            const results = document.getElementById('searchResults');
+            if (!value || value.length < 2) {
+                results.innerHTML = '<div class="text-muted" style="font-size:0.75rem;">Ketik minimal 2 karakter...</div>';
+                return;
+            }
+            
+            const searchData = window.searchData || [];
+            const filtered = searchData.filter(item => 
+                item.pltd && item.pltd.toLowerCase().includes(value.toLowerCase()) ||
+                item.material && item.material.toLowerCase().includes(value.toLowerCase()) ||
+                item.kode && item.kode.toLowerCase().includes(value.toLowerCase())
+            );
+            
+            if (filtered.length === 0) {
+                results.innerHTML = '<div class="text-muted" style="font-size:0.75rem;">Tidak ditemukan</div>';
+                return;
+            }
+            
+            results.innerHTML = filtered.slice(0, 10).map(item => 
+                '<div class="p-2 border-bottom" style="cursor:pointer;font-size:0.8rem;" onclick="showToast('📍 ' + item.pltd + ' - ' + item.material + '', 'info')">' +
+                    '<strong>' + item.pltd + '</strong> - ' + item.material +
+                    (item.sisa_bulan ? '<span class="badge ' + (item.sisa_bulan < 1.5 ? 'bg-danger' : 'bg-success') + ' ms-2">' + item.sisa_bulan + ' bulan</span>' : '') +
+                '</div>'
+            ).join('');
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchItems = [];
+            document.querySelectorAll('.table tbody tr').forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 2) {
+                    const pltd = cells[0]?.textContent?.trim() || '';
+                    const material = cells[1]?.textContent?.trim() || '';
+                    const sisa = cells[3]?.textContent?.trim() || '';
+                    if (pltd || material) {
+                        searchItems.push({
+                            pltd: pltd,
+                            material: material,
+                            kode: cells[2]?.textContent?.trim() || '',
+                            sisa_bulan: parseFloat(sisa) || 0
+                        });
+                    }
+                }
+            });
+            window.searchData = searchItems;
+        });
+
+        function exportTableToExcel(tableId, filename) {
+            const table = document.getElementById(tableId);
+            if (!table) { showToast('Tabel tidak ditemukan', 'error'); return; }
+            
+            const ws = XLSX.utils.table_to_sheet(table);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+            XLSX.writeFile(wb, filename + '_' + new Date().toISOString().slice(0,10) + '.xlsx');
+            showToast('✅ Excel berhasil diexport', 'success');
+        }
+
+        function exportTableToCSV(tableId, filename) {
+            const table = document.getElementById(tableId);
+            if (!table) { showToast('Tabel tidak ditemukan', 'error'); return; }
+            
+            let csv = [];
+            table.querySelectorAll('tr').forEach(row => {
+                const rowData = [];
+                row.querySelectorAll('td, th').forEach(col => {
+                    rowData.push(col.textContent.trim().replace(/,/g, ';'));
+                });
+                csv.push(rowData.join(','));
+            });
+            
+            const blob = new Blob([csv.join('
+')], { type: 'text/csv' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename + '_' + new Date().toISOString().slice(0,10) + '.csv';
+            link.click();
+            URL.revokeObjectURL(link.href);
+            showToast('✅ CSV berhasil diexport', 'success');
+        }
+
+        function exportTableToPDF(tableId, filename) {
+            const table = document.getElementById(tableId);
+            if (!table) { showToast('Tabel tidak ditemukan', 'error'); return; }
+            
+            html2canvas(table, { scale: 2, backgroundColor: '#ffffff', logging: false, useCORS: true })
+                .then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const { jsPDF } = window.jspdf;
+                    const pdf = new jsPDF('l', 'mm', 'a4');
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                    pdf.save(filename + '_' + new Date().toISOString().slice(0,10) + '.pdf');
+                    showToast('✅ PDF berhasil diexport', 'success');
+                })
+                .catch(() => showToast('Gagal export PDF', 'error'));
+        }
+
+        let autoRefreshInterval = null;
+
+        function startAutoRefresh(interval) {
+            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+            autoRefreshInterval = setInterval(() => {
+                showToast('🔄 Auto refresh data...', 'info', 1500);
+                location.reload();
+            }, interval || 300000);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!document.querySelector('.alert-warning')) {
+                startAutoRefresh(300000);
+            }
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'd') { e.preventDefault(); toggleDarkMode(); }
+            if (e.ctrlKey && e.key === 's') { e.preventDefault(); toggleSearch(); }
+            if (e.ctrlKey && e.key === 'r') {
+                e.preventDefault();
+                showLoading('🔄 Memuat ulang data...');
+                setTimeout(() => location.reload(), 500);
+            }
+            if (e.key === 'Escape') {
+                document.getElementById('searchDropdown').classList.remove('open');
+            }
+        });
+
+        window.addEventListener('load', function() {
+            hideLoading();
+            setTimeout(animateCounters, 300);
+            showToast('📊 Dashboard siap digunakan!', 'success', 2000);
+        });
+
+        document.querySelectorAll('.table th').forEach(th => {
+            th.style.cursor = 'pointer';
+            th.addEventListener('click', function() {
+                const table = this.closest('table');
+                const tbody = table.querySelector('tbody');
+                if (!tbody) return;
+                
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                const colIndex = Array.from(this.parentElement.children).indexOf(this);
+                const isAsc = this.dataset.sort === 'asc';
+                
+                rows.sort((a, b) => {
+                    const aVal = a.children[colIndex]?.textContent.trim() || '';
+                    const bVal = b.children[colIndex]?.textContent.trim() || '';
+                    const aNum = parseFloat(aVal.replace(/[^0-9.-]/g, ''));
+                    const bNum = parseFloat(bVal.replace(/[^0-9.-]/g, ''));
+                    
+                    if (!isNaN(aNum) && !isNaN(bNum)) {
+                        return isAsc ? aNum - bNum : bNum - aNum;
+                    }
+                    return isAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                });
+                
+                rows.forEach(row => tbody.appendChild(row));
+                this.dataset.sort = isAsc ? 'desc' : 'asc';
+                this.parentElement.querySelectorAll('th').forEach(th => { th.dataset.sort = ''; });
+                this.dataset.sort = isAsc ? 'desc' : 'asc';
+            });
+        });
+
+        document.querySelectorAll('[data-period]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('[data-period]').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                showToast('📊 Menampilkan data ' + this.dataset.period + ' hari terakhir', 'info', 1500);
+            });
+        });
+
+        function checkNotifications() {
+            const criticalCount = parseInt(document.querySelector('.counter[data-target]')?.dataset?.target || '0');
+            document.getElementById('notifDot').style.display = criticalCount > 0 ? 'block' : 'none';
+        }
+        setTimeout(checkNotifications, 1000);
+
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+            new bootstrap.Tooltip(el);
+        });
+
+        console.log('🚀 PLTD Control Tower v3.0 loaded successfully!');
+        console.log('📊 Dashboard by Bach Group Logistics');
+    </script>
+
+</body>
+</html>
